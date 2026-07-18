@@ -21,7 +21,7 @@ public class Livro{
     private String autor;
 
     @Column(nullable = false)
-    private String catagoria;
+    private String categoria;
 
     @Column(nullable = false)
     private Integer quantidadeDisponivel;
