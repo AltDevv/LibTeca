@@ -1,0 +1,58 @@
+# IntelliJ / IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Local environment / secrets
+.env
+*.env
+.env.*
+backend/src/main/resources/application.properties
+!backend/src/main/resources/application-example.properties
+application-local.properties
+application-dev.properties
+application-prod.properties
+
+# Dart / Flutter
+.dart_tool/
+**/.dart_tool/
+.pub/
+.pub-cache/
+build/
+**/build/
+coverage/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Flutter platforms not used in this project
+frontend/android/
+frontend/ios/
+frontend/linux/
+frontend/macos/
+frontend/windows/
+
+# Flutter generated
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/android/local.properties
+
+# Java / Maven / Spring
+target/
+*.class
+
+# Logs / OS
+logs/
+*.log
+.DS_Store
+Thumbs.db
+
+# Flutter platforms not used in this project
+frontend/android/
+frontend/ios/
+frontend/linux/
+frontend/macos/
+frontend/windows/
+
