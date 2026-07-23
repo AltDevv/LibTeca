@@ -1,4 +1,7 @@
 package com.libteca.repository;
 
-public class LivroRepository {
+import com.libteca.entity.Livro;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface LivroRepository extends JpaRepository<Livro, Long> {
 }
