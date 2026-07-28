@@ -3,6 +3,7 @@ package com.libteca.controller;
 import  com.libteca.entity.Livro;
 import com.libteca.service.LivroService;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -27,7 +28,7 @@ public class LivroController {
     }
 
     @PostMapping
-    public Livro adicionarLivro(@RequestBody Livro livro){
+    public Livro adicionarLivro(@Valid @RequestBody Livro livro){
         return livroService.adicionarLivro(livro);
     }
 

@@ -56,3 +56,9 @@ frontend/linux/
 frontend/macos/
 frontend/windows/
 
+# Postman local files
+.postman/
+postman/globals/
+postman/environments/
+postman/
+
