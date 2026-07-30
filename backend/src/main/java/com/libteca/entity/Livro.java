@@ -19,7 +19,6 @@ public class Livro{
     //Id
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(unique = true)
     private Long id;
 
     //título
@@ -47,5 +46,11 @@ public class Livro{
     @Min(1)
     @Column(nullable = false)
     private Integer numeroDePaginas;
+
+    //Ano de lançamento
+    @NotNull
+    @Min(1)
+    @Column(nullable = false)
+    private Integer ano;
 
 }

@@ -1,9 +1,10 @@
 package com.libteca.controller;
 
-import  com.libteca.entity.Livro;
+import com.libteca.dto.livro.LivroRequest;
+import com.libteca.dto.livro.LivroResponse;
 import com.libteca.service.LivroService;
-import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -18,28 +19,27 @@ public class LivroController {
     }
 
     @GetMapping
-    public List<Livro> listarTodos(){
+    public List<LivroResponse> listarTodos() {
         return livroService.listarTodos();
     }
 
     @GetMapping("/{id}")
-    public Livro mostrarLivro(@PathVariable Long id){
+    public LivroResponse mostrarLivro(@PathVariable Long id) {
         return livroService.mostrarLivro(id);
     }
 
     @PostMapping
-    public Livro adicionarLivro(@Valid @RequestBody Livro livro){
-        return livroService.adicionarLivro(livro);
+    public LivroResponse adicionarLivro(@Valid @RequestBody LivroRequest request) {
+        return livroService.adicionarLivro(request);
     }
 
     @DeleteMapping("/{id}")
-    public void apagarLivro(@PathVariable Long id){
+    public void apagarLivro(@PathVariable Long id) {
         livroService.apagarLivro(id);
     }
 
     @DeleteMapping
-    public void apagarTodos(){
+    public void apagarTodos() {
         livroService.apagarTodos();
     }
-
 }
