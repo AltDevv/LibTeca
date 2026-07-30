@@ -3,7 +3,9 @@ package com.libteca.mapper;
 import com.libteca.dto.livro.LivroRequest;
 import com.libteca.dto.livro.LivroResponse;
 import com.libteca.entity.Livro;
+import org.springframework.stereotype.Component;
 
+@Component
 public class LivroMapper {
 
     public Livro toEntity(LivroRequest request) {
