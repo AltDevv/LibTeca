@@ -9,11 +9,14 @@ public record LivroRequest(
         @NotBlank(message = "O título é obrigatório")
         String titulo,
 
-        @NotBlank(message = "O autor é obrigatório")
-        String autor,
+        @NotNull(message = "O autor é obrigatório")
+        Long autorId,
 
-        @NotBlank(message = "A categoria é obrigatória")
-        String categoria,
+        @NotNull(message = "A categoria é obrigatória")
+        Long categoriaId,
+
+        @NotNull(message = "A editora é obrigatória")
+        Long editoraId,
 
         @NotNull
         @Min(0)

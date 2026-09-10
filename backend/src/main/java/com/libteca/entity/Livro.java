@@ -5,11 +5,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Column;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
 import lombok.Getter;
 import lombok.Setter;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 
 @Getter
 @Setter
@@ -27,14 +29,22 @@ public class Livro{
     private String titulo;
 
     //autor
-    @NotBlank
-    @Column(nullable = false)
-    private String autor;
+    @NotNull(message = "O autor é obrigatório")
+    @ManyToOne
+    @JoinColumn(name = "autor_id", nullable = false)
+    private Autor autor;
 
     //categoria
-    @NotBlank
-    @Column(nullable = false)
-    private String categoria;
+    @NotNull(message = "A categoria é obrigatória")
+    @ManyToOne
+    @JoinColumn(name = "categoria_id", nullable = false)
+    private Categoria categoria;
+
+    //editora
+    @NotNull(message = "A editora é obrigatória")
+    @ManyToOne
+    @JoinColumn(name = "editora_id", nullable = false)
+    private Editora editora;
 
     //quantidade de livros
     @Min(0)
