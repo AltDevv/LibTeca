@@ -7,6 +7,10 @@ import com.libteca.entity.Categoria;
 import com.libteca.entity.Editora;
 import com.libteca.entity.Livro;
 import com.libteca.filter.LivroFiltro;
+import com.libteca.handler.livro.exception.AutorNaoEncontradoException;
+import com.libteca.handler.livro.exception.CategoriaNaoEncontradaException;
+import com.libteca.handler.livro.exception.EditoraNaoEncontradaException;
+import com.libteca.handler.livro.exception.LivroNaoEncontradoException;
 import com.libteca.mapper.LivroMapper;
 import com.libteca.repository.AutorRepository;
 import com.libteca.repository.CategoriaRepository;
@@ -17,9 +21,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
-
-import java.util.List;
 
 @Service
 public class LivroService {
@@ -58,13 +59,13 @@ public class LivroService {
     public LivroResponse adicionarLivro(LivroRequest request) {
 
         Autor autor = autorRepository.findById(request.autorId())
-                .orElseThrow(() -> new RuntimeException("Autor não encontrado"));
+                .orElseThrow(() -> new AutorNaoEncontradoException("Autor não encontrado"));
 
         Categoria categoria = categoriaRepository.findById(request.categoriaId())
-                .orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
+                .orElseThrow(() -> new CategoriaNaoEncontradaException("Categoria não encontrada"));
 
         Editora editora = editoraRepository.findById(request.editoraId())
-                .orElseThrow(() -> new RuntimeException("Editora não encontrada"));
+                .orElseThrow(() -> new EditoraNaoEncontradaException("Editora não encontrada"));
 
         Livro livro = livroMapper.toEntity(request, autor, categoria, editora);
 
@@ -77,7 +78,7 @@ public class LivroService {
     public LivroResponse mostrarLivro(Long id) {
 
         Livro livro = livroRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Livro não encontrado"));
+                .orElseThrow(() -> new LivroNaoEncontradoException("Livro não encontrado"));
 
         return livroMapper.toResponse(livro);
     }
@@ -86,7 +87,7 @@ public class LivroService {
     public void apagarLivro(Long id) {
 
         if (!livroRepository.existsById(id)) {
-            throw new RuntimeException("Livro não encontrado");//Criar excessão específica aqui quando possível
+            throw new LivroNaoEncontradoException("Livro não encontrado");//Criar excessão específica aqui quando possível
         }
 
         livroRepository.deleteById(id);
