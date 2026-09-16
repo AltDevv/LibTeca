@@ -6,9 +6,6 @@ import com.libteca.entity.Autor;
 import com.libteca.entity.Categoria;
 import com.libteca.entity.Editora;
 import com.libteca.entity.Livro;
-import com.libteca.mapper.AutorMapper;
-import com.libteca.mapper.CategoriaMapper;
-import com.libteca.mapper.EditoraMapper;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,13 +15,21 @@ public class LivroMapper {
     private final CategoriaMapper categoriaMapper;
     private final EditoraMapper editoraMapper;
 
-    public LivroMapper(AutorMapper autorMapper, CategoriaMapper categoriaMapper, EditoraMapper editoraMapper) {
+    public LivroMapper(
+            AutorMapper autorMapper,
+            CategoriaMapper categoriaMapper,
+            EditoraMapper editoraMapper) {
+
         this.autorMapper = autorMapper;
         this.categoriaMapper = categoriaMapper;
         this.editoraMapper = editoraMapper;
     }
 
-    public Livro toEntity(LivroRequest request, Autor autor, Categoria categoria, Editora editora) {
+    public Livro toEntity(
+            LivroRequest request,
+            Autor autor,
+            Categoria categoria,
+            Editora editora) {
 
         Livro livro = new Livro();
 
@@ -32,9 +37,55 @@ public class LivroMapper {
         livro.setAutor(autor);
         livro.setCategoria(categoria);
         livro.setEditora(editora);
-        livro.setQuantidadeDisponivel(request.quantidadeDisponivel());
-        livro.setNumeroDePaginas(request.numeroDePaginas());
-        livro.setAno(request.ano());
+
+        //!Físico
+        livro.setQuantidadeDisponivel(
+                request.quantidadeDisponivel()
+        );
+
+        //!Dados gerais
+        livro.setNumeroDePaginas(
+                request.numeroDePaginas()
+        );
+
+        livro.setAno(
+                request.ano()
+        );
+
+        //!Tipo
+        livro.setTipo(
+                request.tipo()
+        );
+
+        //!Virtual
+        livro.setPermiteDownload(
+                request.permiteDownload()
+        );
+
+        livro.setTamanhoMaximoArquivo(
+                request.tamanhoMaximoArquivo()
+        );
+
+        livro.setPossuiExpiracao(
+                request.possuiExpiracao()
+        );
+
+        livro.setDiasExpiracao(
+                request.diasExpiracao()
+        );
+
+        livro.setQuantidadeAcessosDisponiveis(
+                request.quantidadeAcessosDisponiveis()
+        );
+
+        // Lançamento
+        livro.setPossuiPrelancamento(
+                request.possuiPrelancamento()
+        );
+
+        livro.setDataLancamento(
+                request.dataLancamento()
+        );
 
         return livro;
     }
@@ -44,14 +95,39 @@ public class LivroMapper {
         return new LivroResponse(
                 livro.getId(),
                 livro.getTitulo(),
-                autorMapper.toResponse(livro.getAutor()),
-                categoriaMapper.toResponse(livro.getCategoria()),
-                editoraMapper.toResponse(livro.getEditora()),
+
+                autorMapper.toResponse(
+                        livro.getAutor()
+                ),
+
+                categoriaMapper.toResponse(
+                        livro.getCategoria()
+                ),
+
+                editoraMapper.toResponse(
+                        livro.getEditora()
+                ),
+
+                //!Tipo
+                livro.getTipo(),
+
+                //!Físico
                 livro.getQuantidadeDisponivel(),
+
+                //!Dados gerais
                 livro.getNumeroDePaginas(),
-                livro.getAno()
+                livro.getAno(),
+
+                //!Virtual
+                livro.getPermiteDownload(),
+                livro.getTamanhoMaximoArquivo(),
+                livro.getPossuiExpiracao(),
+                livro.getDiasExpiracao(),
+                livro.getQuantidadeAcessosDisponiveis(),
+
+                //!Lançamento
+                livro.getPossuiPrelancamento(),
+                livro.getDataLancamento()
         );
-
     }
-
 }

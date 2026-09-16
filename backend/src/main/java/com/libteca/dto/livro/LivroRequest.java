@@ -1,8 +1,11 @@
 package com.libteca.dto.livro;
 
+import com.libteca.enums.TypeLivro;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+
+import java.time.LocalDate;
 
 public record LivroRequest(
 
@@ -18,7 +21,7 @@ public record LivroRequest(
         @NotNull(message = "A editora é obrigatória")
         Long editoraId,
 
-        @NotNull
+        //!Físico
         @Min(0)
         Integer quantidadeDisponivel,
 
@@ -28,6 +31,28 @@ public record LivroRequest(
 
         @NotNull
         @Min(1)
-        Integer ano
+        Integer ano,
+
+        //!Tipo
+        @NotNull(message = "O tipo do livro é obrigatório")
+        TypeLivro tipo,
+
+        //!Virtual
+        Boolean permiteDownload,
+
+        @Min(1)
+        Long tamanhoMaximoArquivo,
+
+        Boolean possuiExpiracao,
+
+        @Min(1)
+        Integer diasExpiracao,
+
+        Integer quantidadeAcessosDisponiveis,
+
+        //!Lançamento
+        Boolean possuiPrelancamento,
+
+        LocalDate dataLancamento
 
 ) {}

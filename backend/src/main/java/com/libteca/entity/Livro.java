@@ -1,23 +1,21 @@
 package com.libteca.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Column;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.JoinColumn;
+import com.libteca.enums.TypeLivro;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 
+import java.time.LocalDate;
+
 @Getter
 @Setter
 @Entity
 public class Livro{
 
+    //!Atributos básicos
     //Id
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,6 +44,7 @@ public class Livro{
     @JoinColumn(name = "editora_id", nullable = false)
     private Editora editora;
 
+    //!Atributos extras
     //quantidade de livros
     @Min(0)
     @Column(nullable = false)
@@ -62,5 +61,30 @@ public class Livro{
     @Min(1)
     @Column(nullable = false)
     private Integer ano;
+
+    //Físico ou tipoEmprestimo
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TypeLivro tipo;
+
+    //!Atributos do Livro Virtual
+    private Boolean permiteDownload;
+
+    @Min(1)
+    private Long tamanhoMaximoArquivo;
+
+    private Boolean possuiExpiracao;
+
+    @Min(1)
+    private Integer diasExpiracao;
+
+    //Quantidade de possibilidade de acesso a um livro
+    //Usado para livros digitais, sendo o Null representando o infinito
+    private Integer quantidadeAcessosDisponiveis;
+
+    private Boolean possuiPrelancamento;
+
+    private LocalDate dataLancamento;
 
 }
