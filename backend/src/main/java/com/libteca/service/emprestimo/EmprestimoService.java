@@ -5,6 +5,7 @@ import com.libteca.dto.emprestimo.EmprestimoResponse;
 import com.libteca.entity.Emprestimo;
 import com.libteca.entity.Livro;
 import com.libteca.entity.Usuario;
+import com.libteca.enums.StatusEmprestimo;
 import com.libteca.enums.TypeLivro;
 import com.libteca.handler.emprestimo.exception.EmprestimoJaDevolvidoException;
 import com.libteca.handler.emprestimo.exception.EmprestimoNaoEncontradoException;
@@ -63,13 +64,14 @@ public class EmprestimoService {
     // Adicionar
     @Transactional
     public EmprestimoResponse adicionarEmprestimo(EmprestimoRequest request) {
-
         Livro livro = livroRepository.findById(request.livroId())
                 .orElseThrow(() -> new LivroNaoEncontradoException("Livro não encontrado"));
 
 
         Usuario usuario = usuarioRepository.findById(request.usuarioId())
                 .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+
+
 
         LocalDate dataExpiracao = null;
 
@@ -82,8 +84,9 @@ public class EmprestimoService {
             dataExpiracao =
                     emprestimoVirtualService.emprestarVirtual(livro);
         }
+        LocalDate hoje = LocalDate.now();
 
-        Emprestimo emprestimo = emprestimoMapper.toEntity(request, livro, usuario, dataExpiracao);
+        Emprestimo emprestimo = emprestimoMapper.toEntity(livro, usuario, hoje, dataExpiracao);
 
         Emprestimo salvo = emprestimoRepository.save(emprestimo);
 
@@ -106,9 +109,15 @@ public class EmprestimoService {
         Emprestimo emprestimo = emprestimoRepository.findById(id)
                 .orElseThrow(() -> new EmprestimoNaoEncontradoException("Empréstimo não encontrado"));
 
-        if (emprestimo.getDataDevolucao() != null) {
-            throw new EmprestimoJaDevolvidoException("Este empréstimo já foi devolvido");
+        if (emprestimo.getStatus() == StatusEmprestimo.DEVOLVIDO) {
+            throw new EmprestimoJaDevolvidoException(
+                    "Este empréstimo já foi devolvido"
+            );
         }
+
+        //if (emprestimo.getDataDevolucao() != null) {
+        //            throw new EmprestimoJaDevolvidoException("Este empréstimo já foi devolvido");
+        //        }
 
         Livro livro = emprestimo.getLivro();
 
@@ -125,8 +134,11 @@ public class EmprestimoService {
         livroRepository.save(livro);
 
         Emprestimo salvo = emprestimoRepository.save(emprestimo);
+        emprestimo.setStatus(StatusEmprestimo.DEVOLVIDO);
 
         return emprestimoMapper.toResponse(salvo);
+
+
     }
 
     // Apagar por ID
@@ -137,6 +149,23 @@ public class EmprestimoService {
         }
 
         emprestimoRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void processarEmprestimosExpirados() {
+
+        LocalDate hoje = LocalDate.now();
+
+        List<Emprestimo> emprestimos =
+                emprestimoRepository
+                        .findByStatusAndDataExpiracaoLessThanEqual(
+                                StatusEmprestimo.ATIVO,
+                                hoje
+                        );
+
+        for (Emprestimo emprestimo : emprestimos) {
+            emprestimo.setStatus(StatusEmprestimo.EXPIRADO);
+        }
     }
 
 }

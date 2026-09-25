@@ -1,12 +1,7 @@
 package com.libteca.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Column;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.JoinColumn;
+import com.libteca.enums.StatusEmprestimo;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import jakarta.validation.constraints.NotNull;
@@ -48,5 +43,10 @@ public class Emprestimo{
     //serve para representar se ele foi devolvido ou não verificando se é nulo.
     @Column(nullable = true)
     private LocalDate dataDevolucao;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusEmprestimo status = StatusEmprestimo.ATIVO;
 
 }

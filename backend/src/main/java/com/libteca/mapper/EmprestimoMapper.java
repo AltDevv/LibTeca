@@ -14,24 +14,27 @@ public class EmprestimoMapper {
 
     private final LivroMapper livroMapper;
     private final UsuarioMapper usuarioMapper;
-    private LocalDate dataExpiracao;
 
-    public EmprestimoMapper(LivroMapper livroMapper, UsuarioMapper usuarioMapper) {
+    public EmprestimoMapper(
+            LivroMapper livroMapper,
+            UsuarioMapper usuarioMapper
+    ) {
         this.livroMapper = livroMapper;
         this.usuarioMapper = usuarioMapper;
     }
 
     public Emprestimo toEntity(
-            EmprestimoRequest request,
             Livro livro,
             Usuario usuario,
-            LocalDate dataExpiracao) {
+            LocalDate dataEmprestimo,
+            LocalDate dataExpiracao
+    ) {
 
         Emprestimo emprestimo = new Emprestimo();
 
         emprestimo.setLivro(livro);
         emprestimo.setUsuario(usuario);
-        emprestimo.setDataEmprestimo(LocalDate.now());
+        emprestimo.setDataEmprestimo(dataEmprestimo);
         emprestimo.setDataExpiracao(dataExpiracao);
 
         return emprestimo;
@@ -45,8 +48,8 @@ public class EmprestimoMapper {
                 usuarioMapper.toResponse(emprestimo.getUsuario()),
                 emprestimo.getDataEmprestimo(),
                 emprestimo.getDataExpiracao(),
-                emprestimo.getDataDevolucao()
+                emprestimo.getDataDevolucao(),
+                emprestimo.getStatus()
         );
     }
-
 }
