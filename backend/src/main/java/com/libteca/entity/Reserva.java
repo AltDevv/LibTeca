@@ -1,12 +1,7 @@
 package com.libteca.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Column;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.JoinColumn;
+import com.libteca.enums.StatusReserva;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import jakarta.validation.constraints.NotNull;
@@ -35,13 +30,14 @@ public class Reserva{
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    //!Deve ser gerado pelo backend, não deve ser parte da entidade
     //data em que a reserva foi feita
     @NotNull(message = "A data da reserva é obrigatória")
     @Column(nullable = false)
     private LocalDate dataReserva;
 
-    //se a reserva ainda está ativa (false = cancelada ou concluída)
+    @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Boolean ativa = true;
-
+    private StatusReserva status = StatusReserva.ATIVA;//status é o nome da variável
 }

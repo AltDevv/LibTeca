@@ -27,7 +27,6 @@ public class ReservaMapper {
         reserva.setLivro(livro);
         reserva.setUsuario(usuario);
         reserva.setDataReserva(LocalDate.now());
-        reserva.setAtiva(true);
 
         return reserva;
     }
@@ -38,8 +37,7 @@ public class ReservaMapper {
                 reserva.getId(),
                 livroMapper.toResponse(reserva.getLivro()),
                 usuarioMapper.toResponse(reserva.getUsuario()),
-                reserva.getDataReserva(),
-                reserva.getAtiva()
+                reserva.getDataReserva()
         );
 
     }
