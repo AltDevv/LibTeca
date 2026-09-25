@@ -6,6 +6,8 @@ import com.libteca.entity.Autor;
 import com.libteca.entity.Categoria;
 import com.libteca.entity.Editora;
 import com.libteca.entity.Livro;
+import jakarta.persistence.Column;
+import jakarta.validation.constraints.Min;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -113,6 +115,9 @@ public class LivroMapper {
 
                 //!Físico
                 livro.getQuantidadeDisponivel(),
+
+                //!Extra
+                livro.getLimiteReservas(),
 
                 //!Dados gerais
                 livro.getNumeroDePaginas(),

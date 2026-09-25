@@ -256,6 +256,22 @@ public class LivroSpecification {
                 );
             }
 
+
+            //!Extra
+            if (filtro.getLimiteReservas() != null) {
+
+                predicates.add(
+                        criteriaBuilder.equal(
+                                root.<Integer>get(
+                                        "limiteReservas"
+                                ),
+                                filtro.getLimiteReservas()
+                        )
+                );
+            }
+
+
+
             //! PÁGINAS
             // Número exato de páginas
             if (filtro.getNumeroDePaginas() != null) {

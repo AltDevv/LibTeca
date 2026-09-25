@@ -1,5 +1,7 @@
 package com.libteca.filter;
 
+import jakarta.persistence.Column;
+import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -37,6 +39,9 @@ public class LivroFiltro {
         private Integer quantidadeDisponivel;
         private Integer quantidadeMinima;
         private Integer quantidadeMaxima;
+
+        //!Extra
+        private Integer limiteReservas;
 
         //!Páginas
         private Integer numeroDePaginas;

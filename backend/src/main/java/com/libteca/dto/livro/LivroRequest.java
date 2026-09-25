@@ -1,6 +1,7 @@
 package com.libteca.dto.livro;
 
 import com.libteca.enums.TypeLivro;
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -32,6 +33,11 @@ public record LivroRequest(
         @NotNull
         @Min(1)
         Integer ano,
+
+        //!Extra
+        @Min(value = 0, message = "O limite de reservas não pode ser negativo")
+        @Column
+        Integer limiteReservas,
 
         //!Tipo
         @NotNull(message = "O tipo do livro é obrigatório")

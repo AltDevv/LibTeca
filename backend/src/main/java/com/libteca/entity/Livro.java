@@ -50,6 +50,10 @@ public class Livro{
     @Column(nullable = false)
     private Integer quantidadeDisponivel;
 
+    @Min(0)
+    @Column
+    private Integer limiteReservas;
+
     //número de páginas
     @NotNull
     @Min(1)
