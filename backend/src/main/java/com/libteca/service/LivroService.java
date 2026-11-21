@@ -1,140 +1,109 @@
 package com.libteca.service;
 
-import com.libteca.dto.livro.LivroRequest;
-import com.libteca.dto.livro.LivroResponse;
-import com.libteca.entity.Autor;
-import com.libteca.entity.Categoria;
-import com.libteca.entity.Editora;
-import com.libteca.entity.Livro;
+import com.libteca.dto.livro.*;
+import com.libteca.entity.*;
 import com.libteca.filter.LivroFiltro;
-import com.libteca.handler.livro.exception.AutorNaoEncontradoException;
-import com.libteca.handler.livro.exception.CategoriaNaoEncontradaException;
-import com.libteca.handler.livro.exception.EditoraNaoEncontradaException;
-import com.libteca.handler.livro.exception.LivroNaoEncontradoException;
+import com.libteca.handler.livro.exception.*;
 import com.libteca.mapper.LivroMapper;
-import com.libteca.repository.AutorRepository;
-import com.libteca.repository.CategoriaRepository;
-import com.libteca.repository.EditoraRepository;
-import com.libteca.repository.LivroRepository;
+import com.libteca.repository.*;
 import com.libteca.specification.LivroSpecification;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import java.util.LinkedHashSet;
 
 @Service
+@Transactional
 public class LivroService {
 
+    private final BibliotecaRepository bibliotecaRepository;
     private final LivroMapper livroMapper;
     private final LivroRepository livroRepository;
     private final AutorRepository autorRepository;
     private final CategoriaRepository categoriaRepository;
     private final EditoraRepository editoraRepository;
+    private final FuncionarioService funcionarioService;
+    private final ExemplarRepository exemplarRepository;
 
-    public LivroService(LivroRepository livroRepository, LivroMapper livroMapper,
-                         AutorRepository autorRepository, CategoriaRepository categoriaRepository,
-                         EditoraRepository editoraRepository) {
+    public LivroService(LivroRepository livroRepository, LivroMapper livroMapper, AutorRepository autorRepository,
+                        CategoriaRepository categoriaRepository, EditoraRepository editoraRepository,
+                        FuncionarioService funcionarioService, BibliotecaRepository bibliotecaRepository,
+                        ExemplarRepository exemplarRepository) {
+        this.exemplarRepository = exemplarRepository;
+        this.bibliotecaRepository = bibliotecaRepository;
         this.livroRepository = livroRepository;
         this.livroMapper = livroMapper;
         this.autorRepository = autorRepository;
         this.categoriaRepository = categoriaRepository;
         this.editoraRepository = editoraRepository;
+        this.funcionarioService = funcionarioService;
     }
 
-    // Todos
     public Page<LivroResponse> listarTodos(Pageable pageable) {
-
-        return livroRepository
-                .findAll(pageable)
-                .map(livroMapper::toResponse);
-
+        return livroRepository.findAll(pageable).map(livroMapper::toResponse);
     }
 
-    // Todos
-    public void apagarTodos() {
-        livroRepository.deleteAll();
-    }
-
-    // Adicionar
-    public LivroResponse adicionarLivro(LivroRequest request) {
-
-        Autor autor = autorRepository.findById(request.autorId())
-                .orElseThrow(() -> new AutorNaoEncontradoException("Autor não encontrado"));
-
-        Categoria categoria = categoriaRepository.findById(request.categoriaId())
-                .orElseThrow(() -> new CategoriaNaoEncontradaException("Categoria não encontrada"));
-
+    private Livro montarLivro(LivroRequest request, Funcionario funcionario) {
+        LinkedHashSet<Autor> autores = new LinkedHashSet<>();
+        for (Long id : request.autoresIds()) {
+            autores.add(autorRepository.findById(id)
+                    .orElseThrow(() -> new AutorNaoEncontradoException("Autor não encontrado: " + id)));
+        }
+        LinkedHashSet<Categoria> categorias = new LinkedHashSet<>();
+        for (Long id : request.categoriasIds()) {
+            categorias.add(categoriaRepository.findById(id)
+                    .orElseThrow(() -> new CategoriaNaoEncontradaException("Categoria não encontrada: " + id)));
+        }
         Editora editora = editoraRepository.findById(request.editoraId())
                 .orElseThrow(() -> new EditoraNaoEncontradaException("Editora não encontrada"));
+        Livro livro = livroMapper.toEntity(request, autores, categorias, editora, funcionario);
+        return livro;
+    }
 
-        Livro livro = livroMapper.toEntity(request, autor, categoria, editora);
-
-        Livro salvo = livroRepository.save(livro);
-
+    public LivroResponse adicionarLivro(LivroRequest request) {
+        Livro salvo = livroRepository.save(montarLivro(request, funcionarioService.buscarAtivo(request.funcionarioId())));
+        bibliotecaRepository.iniciarAcervo();
         return livroMapper.toResponse(salvo);
     }
 
-    // Buscar por ID
-    public LivroResponse mostrarLivro(Long id) {
-
+    public LivroResponse atualizarLivro(Long id, LivroRequest request) {
         Livro livro = livroRepository.findById(id)
                 .orElseThrow(() -> new LivroNaoEncontradoException("Livro não encontrado"));
+        Livro dados = montarLivro(request, livro.getFuncionario());
+        livro.setTitulo(dados.getTitulo()); livro.setCapa(dados.getCapa());
+        livro.setNumeroDePaginas(dados.getNumeroDePaginas()); livro.setDataLancamento(dados.getDataLancamento());
+        livro.setEditora(dados.getEditora());
+        livro.getAutores().clear(); livro.getAutores().addAll(dados.getAutores());
+        livro.getCategorias().clear(); livro.getCategorias().addAll(dados.getCategorias());
+        return livroMapper.toResponse(livroRepository.save(livro));
+    }
 
+    public LivroResponse mostrarLivro(Long id) {
+        Livro livro = livroRepository.findById(id)
+                .orElseThrow(() -> new LivroNaoEncontradoException("Livro não encontrado"));
         return livroMapper.toResponse(livro);
     }
 
-    // Apagar por ID
     public void apagarLivro(Long id) {
-
-        if (!livroRepository.existsById(id)) {
-            throw new LivroNaoEncontradoException("Livro não encontrado");//Criar excessão específica aqui quando possível
+        Livro livro = livroRepository.findById(id)
+                .orElseThrow(() -> new LivroNaoEncontradoException("Livro não encontrado"));
+        if (exemplarRepository.countByLivroId(id) > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Este livro possui exemplares vinculados e não pode ser excluído.");
         }
-
-        livroRepository.deleteById(id);
+        livroRepository.delete(livro);
+        livroRepository.flush();
     }
 
-    //!Busca por categoria,
-    public Page<LivroResponse> buscar(
-            LivroFiltro filtro,
-            Pageable pageable) {
-
-        Specification<Livro> specification =
-                LivroSpecification.comFiltro(filtro);
-
-        Page<Livro> livros =
-                livroRepository.findAll(specification, pageable);
-
-        return livros.map(livroMapper::toResponse);
+    public void apagarTodos() {
+        livroRepository.deleteAll();
+        livroRepository.flush();
     }
 
-
-    //public Page<LivroResponse> buscarPorTitulo(String titulo, Pageable pageable) {
-    //
-    //        return livroRepository
-    //                .findByTituloContainingIgnoreCase(titulo, pageable)
-    //                .map(livroMapper::toResponse);
-    //
-    //    }
-    //
-    //    public Page<LivroResponse> buscarPorAutor(String autor, Pageable pageable) {
-    //
-    //        return livroRepository
-    //                .findByAutorNomeContainingIgnoreCase(autor, pageable)
-    //                .map(livroMapper::toResponse);
-    //    }
-    //
-    //    public Page<LivroResponse> buscarPorCategoria(String categoria, Pageable pageable) {
-    //
-    //        return livroRepository
-    //                .findByCategoriaNomeContainingIgnoreCase(categoria, pageable)
-    //                .map(livroMapper::toResponse);
-    //    }
-    //
-    //    public Page<LivroResponse> buscarPorEditora(String editora, Pageable pageable) {
-    //
-    //        return livroRepository
-    //                .findByEditoraNomeContainingIgnoreCase(editora, pageable)
-    //                .map(livroMapper::toResponse);
-    //    }
-
+    public Page<LivroResponse> buscar(LivroFiltro filtro, Pageable pageable) {
+        return livroRepository.findAll(LivroSpecification.comFiltro(filtro), pageable).map(livroMapper::toResponse);
+    }
 }

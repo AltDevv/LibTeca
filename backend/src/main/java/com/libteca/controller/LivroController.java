@@ -16,10 +16,12 @@ import java.util.List;
 @RequestMapping("/api/livros")
 public class LivroController {
 
+    private final com.libteca.service.AcessoService acesso;
     private final LivroService livroService;
 
-    public LivroController(LivroService livroService) {
+    public LivroController(LivroService livroService, com.libteca.service.AcessoService acesso) {
         this.livroService = livroService;
+        this.acesso = acesso;
     }
 
     @GetMapping
@@ -35,7 +37,12 @@ public class LivroController {
 
     @PostMapping
     public LivroResponse adicionarLivro(@Valid @RequestBody LivroRequest request) {
-        return livroService.adicionarLivro(request);
+        return livroService.adicionarLivro(new LivroRequest(request.titulo(), request.autoresIds(), request.categoriasIds(), request.editoraId(), acesso.funcionarioAtual(), request.capa(), request.numeroDePaginas(), request.dataLancamento()));
+    }
+
+    @PutMapping("/{id}")
+    public LivroResponse atualizarLivro(@PathVariable Long id, @Valid @RequestBody LivroRequest request) {
+        return livroService.atualizarLivro(id, request);
     }
 
     @DeleteMapping("/{id}")
@@ -52,7 +59,7 @@ public class LivroController {
     //!Filtrar busca de livro
     @GetMapping("/buscar")
     public Page<LivroResponse> buscar(
-            LivroFiltro filtro,
+            @Valid LivroFiltro filtro,
             Pageable pageable) {
 
         return livroService.buscar(filtro, pageable);

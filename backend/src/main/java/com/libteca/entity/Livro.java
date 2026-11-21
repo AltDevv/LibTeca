@@ -1,94 +1,63 @@
 package com.libteca.entity;
 
-import com.libteca.enums.TypeLivro;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.NotBlank;
-
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Getter
 @Setter
 @Entity
-public class Livro{
+@Table(name = "livro")
+public class Livro {
 
-    //!Atributos básicos
-    //Id
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "idlivro")
     private Long id;
 
-    //título
     @NotBlank(message = "O título é obrigatório")
-    @Column(nullable = false)
+    @Size(max = 150)
+    @Column(name = "titulo", nullable = false, length = 150)
     private String titulo;
 
-    //autor
-    @NotNull(message = "O autor é obrigatório")
-    @ManyToOne
-    @JoinColumn(name = "autor_id", nullable = false)
-    private Autor autor;
+    @ManyToMany
+    @JoinTable(name = "livro_autor",
+            joinColumns = @JoinColumn(name = "idlivro"),
+            inverseJoinColumns = @JoinColumn(name = "idautor"))
+    private Set<Autor> autores = new LinkedHashSet<>();
 
-    //categoria
-    @NotNull(message = "A categoria é obrigatória")
-    @ManyToOne
-    @JoinColumn(name = "categoria_id", nullable = false)
-    private Categoria categoria;
+    @ManyToMany
+    @JoinTable(name = "livro_categoria",
+            joinColumns = @JoinColumn(name = "idlivro"),
+            inverseJoinColumns = @JoinColumn(name = "idcategoria"))
+    private Set<Categoria> categorias = new LinkedHashSet<>();
 
-    //editora
-    @NotNull(message = "A editora é obrigatória")
-    @ManyToOne
-    @JoinColumn(name = "editora_id", nullable = false)
+    @NotNull
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "ideditora", nullable = false)
     private Editora editora;
 
-    //!Atributos extras
-    //quantidade de livros
-    @Min(0)
-    @Column(nullable = false)
-    private Integer quantidadeDisponivel;
+    // Funcionário responsável pelo cadastro.
+    @NotNull
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "idfuncionario", nullable = false)
+    private Funcionario funcionario;
 
-    @Min(0)
-    @Column
-    private Integer limiteReservas;
+    @Size(max = 255)
+    @Column(name = "capa", length = 255)
+    private String capa;
 
-    //número de páginas
     @NotNull
     @Min(1)
-    @Column(nullable = false)
+    @Column(name = "numero_de_paginas", nullable = false)
     private Integer numeroDePaginas;
 
-    //Ano de lançamento
     @NotNull
-    @Min(1)
-    @Column(nullable = false)
-    private Integer ano;
-
-    //Físico ou tipoEmprestimo
-    @NotNull
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TypeLivro tipo;
-
-    //!Atributos do Livro Virtual
-    private Boolean permiteDownload;
-
-    @Min(1)
-    private Long tamanhoMaximoArquivo;
-
-    private Boolean possuiExpiracao;
-
-    @Min(1)
-    private Integer diasExpiracao;
-
-    //Quantidade de possibilidade de acesso a um livro
-    //Usado para livros digitais, sendo o Null representando o infinito
-    private Integer quantidadeAcessosDisponiveis;
-
-    private Boolean possuiPrelancamento;
-
+    @Column(name = "data_lancamento", nullable = false)
     private LocalDate dataLancamento;
 
 }

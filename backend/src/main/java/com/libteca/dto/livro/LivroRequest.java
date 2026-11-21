@@ -1,64 +1,15 @@
 package com.libteca.dto.livro;
 
-import com.libteca.enums.TypeLivro;
-import jakarta.persistence.Column;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-
+import jakarta.validation.constraints.*;
 import java.time.LocalDate;
-
+import java.util.Set;
 public record LivroRequest(
-
-        @NotBlank(message = "O título é obrigatório")
-        String titulo,
-
-        @NotNull(message = "O autor é obrigatório")
-        Long autorId,
-
-        @NotNull(message = "A categoria é obrigatória")
-        Long categoriaId,
-
-        @NotNull(message = "A editora é obrigatória")
-        Long editoraId,
-
-        //!Físico
-        @Min(0)
-        Integer quantidadeDisponivel,
-
-        @NotNull
-        @Min(1)
-        Integer numeroDePaginas,
-
-        @NotNull
-        @Min(1)
-        Integer ano,
-
-        //!Extra
-        @Min(value = 0, message = "O limite de reservas não pode ser negativo")
-        @Column
-        Integer limiteReservas,
-
-        //!Tipo
-        @NotNull(message = "O tipo do livro é obrigatório")
-        TypeLivro tipo,
-
-        //!Virtual
-        Boolean permiteDownload,
-
-        @Min(1)
-        Long tamanhoMaximoArquivo,
-
-        Boolean possuiExpiracao,
-
-        @Min(1)
-        Integer diasExpiracao,
-
-        Integer quantidadeAcessosDisponiveis,
-
-        //!Lançamento
-        Boolean possuiPrelancamento,
-
-        LocalDate dataLancamento
-
+        @NotBlank(message = "O título é obrigatório") @Size(max = 150) String titulo,
+        @NotEmpty(message = "Informe ao menos um autor") Set<@NotNull @Positive Long> autoresIds,
+        @NotEmpty(message = "Informe ao menos uma categoria") Set<@NotNull @Positive Long> categoriasIds,
+        @NotNull @Positive Long editoraId,
+        @Positive Long funcionarioId,
+        @Size(max = 255) String capa,
+        @NotNull @Min(1) Integer numeroDePaginas,
+        @NotNull LocalDate dataLancamento
 ) {}
