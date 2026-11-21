@@ -14,31 +14,6 @@ application-local.properties
 application-dev.properties
 application-prod.properties
 
-# Dart / Flutter
-.dart_tool/
-**/.dart_tool/
-.pub/
-.pub-cache/
-build/
-**/build/
-coverage/
-.flutter-plugins
-.flutter-plugins-dependencies
-
-# Flutter platforms not used in this project
-frontend/android/
-frontend/ios/
-frontend/linux/
-frontend/macos/
-frontend/windows/
-
-# Flutter generated
-**/ios/Flutter/Generated.xcconfig
-**/ios/Flutter/flutter_export_environment.sh
-**/ios/Flutter/ephemeral/
-**/macos/Flutter/ephemeral/
-**/android/local.properties
-
 # Java / Maven / Spring
 target/
 *.class
@@ -49,16 +24,26 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Flutter platforms not used in this project
-frontend/android/
-frontend/ios/
-frontend/linux/
-frontend/macos/
-frontend/windows/
-
 # Postman local files
 .postman/
 postman/globals/
 postman/environments/
 postman/
 
+
+# Dados locais, uploads e código temporário (não publicar)
+**/data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+instalacao.codigo
+banco.properties
+banco-*.tmp
+/tmp/
+
+# Mantém a pasta de logs no projeto, sem publicar os registros.
+!/backend/logs/
+/backend/logs/*
+!/backend/logs/.gitkeep
