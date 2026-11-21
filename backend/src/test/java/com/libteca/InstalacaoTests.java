@@ -33,6 +33,7 @@ class InstalacaoTests {
     @Autowired WebApplicationContext contexto;
     @Autowired InstalacaoConfig instalacao;
     @Autowired BibliotecaService biblioteca;
+    @Autowired BibliotecaRepository configuracao;
     @Autowired UsuarioRepository usuarios;
     @Autowired FuncionarioRepository funcionarios;
     @Autowired PasswordEncoder encoder;
@@ -42,7 +43,7 @@ class InstalacaoTests {
     @BeforeEach void preparar() throws Exception {
         mvc=org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(contexto).apply(springSecurity()).build();
         jdbc.update("DELETE FROM funcionario");jdbc.update("DELETE FROM usuario");
-        jdbc.update("UPDATE configuracao_biblioteca SET configurada=0,acervo_iniciado=0,nome='Minha biblioteca',site=NULL WHERE id=1");
+        configuracao.save(new com.libteca.entity.Biblioteca());
         instalacao.gerarCodigo();codigo=Files.readString(pasta.resolve("instalacao.codigo"));
     }
     InstalacaoRequest pedido(String codigo) {return new InstalacaoRequest(new BibliotecaRequest("Biblioteca Horizonte",null),codigo,"Administrador","admin@teste.local","SenhaTeste123!");}
@@ -82,7 +83,7 @@ class InstalacaoTests {
     }
     @Test void administradorExistenteNaoPodeSerSubstituidoPelaInstalacao() throws Exception {
         biblioteca.instalar(pedido(codigo));
-        jdbc.update("UPDATE configuracao_biblioteca SET configurada=0 WHERE id=1");
+        var dados=configuracao.findById(1L).orElseThrow();dados.setConfigurada(0);configuracao.save(dados);
         instalacao.gerarCodigo();codigo=Files.readString(pasta.resolve("instalacao.codigo"));
         mvc.perform(post("/api/instalacao").with(csrf()).contentType("application/json").content(json(codigo))).andExpect(status().isConflict());
         mvc.perform(put("/api/biblioteca").with(user("admin@teste.local")).with(csrf()).contentType("application/json").content("{\"nome\":\"Acervo existente\",\"site\":null}")).andExpect(status().isOk());
