@@ -1,5 +1,8 @@
 package com.libteca.controller;
 
+import com.libteca.dto.emprestimo.EmprestimoResponse;
+import com.libteca.dto.reserva.RetiradaReservaRequest;
+
 import com.libteca.dto.reserva.ReservaRequest;
 import com.libteca.dto.reserva.ReservaResponse;
 import com.libteca.service.reserva.ReservaService;
@@ -12,10 +15,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/reservas")
 public class ReservaController {
 
+    private final com.libteca.service.AcessoService acesso;
     private final ReservaService reservaService;
 
-    public ReservaController(ReservaService reservaService) {
+    public ReservaController(ReservaService reservaService, com.libteca.service.AcessoService acesso) {
         this.reservaService = reservaService;
+        this.acesso = acesso;
     }
 
     @GetMapping
@@ -30,12 +35,19 @@ public class ReservaController {
 
     @PostMapping
     public ReservaResponse adicionarReserva(@Valid @RequestBody ReservaRequest request) {
-        return reservaService.adicionarReserva(request);
+        return reservaService.adicionarReserva(new ReservaRequest(request.exemplarId(), request.usuarioId(), acesso.funcionarioAtual()));
     }
 
     @PatchMapping("/{id}/cancelar")
     public ReservaResponse cancelarReserva(@PathVariable Long id) {
         return reservaService.cancelarReserva(id);
+    }
+
+    @PatchMapping("/{id}/retirar")
+    public EmprestimoResponse retirarReserva(
+            @PathVariable Long id,
+            @Valid @RequestBody RetiradaReservaRequest request) {
+        return reservaService.retirarReserva(id, new RetiradaReservaRequest(request.dataPrevistaDevolucao(), acesso.funcionarioAtual()));
     }
 
     @DeleteMapping("/{id}")

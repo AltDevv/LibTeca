@@ -1,79 +1,57 @@
 package com.libteca.service.reserva;
 
-import com.libteca.dto.reserva.ReservaRequest;
-import com.libteca.entity.Emprestimo;
-import com.libteca.entity.Livro;
-import com.libteca.entity.Reserva;
-import com.libteca.entity.Usuario;
-import com.libteca.enums.StatusReserva;
-import com.libteca.enums.TypeLivro;
-import com.libteca.handler.livro.exception.LivroNaoEncontradoException;
-import com.libteca.handler.usuario.exception.UsuarioNaoEncontradoException;
-import com.libteca.mapper.EmprestimoMapper;
-import com.libteca.repository.EmprestimoRepository;
-import com.libteca.repository.LivroRepository;
-import com.libteca.repository.ReservaRepository;
-import com.libteca.repository.UsuarioRepository;
-import com.libteca.service.emprestimo.tipoEmprestimo.EmprestimoFisicoService;
-import com.libteca.service.emprestimo.tipoEmprestimo.EmprestimoVirtualService;
-import jakarta.transaction.Transactional;
+import com.libteca.entity.*;
+import com.libteca.enums.*;
+import com.libteca.repository.*;
+import com.libteca.service.ExemplarService;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 
-
 @Service
+@Transactional
 public class ReservaLancamentoService {
 
-    private final LivroRepository livroRepository;
+    public static final List<StatusReserva> EM_ANDAMENTO =
+            List.of(StatusReserva.ATIVA, StatusReserva.DISPONIVEL_PARA_RETIRADA);
+
     private final ReservaRepository reservaRepository;
-    private final UsuarioRepository usuarioRepository;
-    private final EmprestimoVirtualService emprestimoVirtualService;
-    private final EmprestimoFisicoService emprestimoFisicoService;
-    private final EmprestimoMapper emprestimoMapper;
     private final EmprestimoRepository emprestimoRepository;
+    private final ExemplarService exemplarService;
 
-    public ReservaLancamentoService(LivroRepository livroRepository, ReservaRepository reservaRepository, UsuarioRepository
-                                    usuarioRepository, EmprestimoVirtualService emprestimoVirtualService,
-                                    EmprestimoFisicoService emprestimoFisicoService,
-                                    EmprestimoMapper emprestimoMapper, EmprestimoRepository emprestimoRepository) {
-
-        this.livroRepository = livroRepository;
+    public ReservaLancamentoService(ReservaRepository reservaRepository, EmprestimoRepository emprestimoRepository,
+                                    ExemplarService exemplarService) {
         this.reservaRepository = reservaRepository;
-        this.usuarioRepository = usuarioRepository;
-        this.emprestimoVirtualService = emprestimoVirtualService;
-        this.emprestimoFisicoService = emprestimoFisicoService;
-        this.emprestimoMapper = emprestimoMapper;
         this.emprestimoRepository = emprestimoRepository;
+        this.exemplarService = exemplarService;
     }
 
-    @Transactional
+    // O chamador já bloqueou o exemplar na transação.
+    public void atualizarDisponibilidade(Exemplar exemplar) {
+        if (!emprestimoRepository.findByExemplarIdAndDataDevolucaoIsNull(exemplar.getId()).isEmpty()) {
+            exemplar.setStatus(StatusExemplar.EMPRESTADO);
+            return;
+        }
+        List<Reserva> reservas = reservaRepository.findByExemplarIdAndStatusInOrderByDataReservaAscIdAsc(
+                exemplar.getId(), EM_ANDAMENTO);
+        if (!reservas.isEmpty()) {
+            Reserva reserva = reservas.get(0);
+            exemplarService.recarregar(reserva);
+            reserva.setStatus(exemplar.getLivro().getDataLancamento().isAfter(LocalDate.now())
+                    ? StatusReserva.ATIVA : StatusReserva.DISPONIVEL_PARA_RETIRADA);
+            exemplar.setStatus(StatusExemplar.RESERVADO);
+        } else {
+            exemplar.setStatus(StatusExemplar.DISPONIVEL);
+        }
+    }
+
     public void processarReservasDeLancamento() {
-
-        LocalDate hoje = LocalDate.now();
-
-        //alguns exemplos:
-        //
-        //Data do lançamento	Hoje	Comparação	Entra na busca?	O que acontece
-           //20/09/2026	    19/09/2026	    20 <= 19	  Não	    Continua ATIVA
-           //19/09/2026	    19/09/2026	    19 <= 19	  Sim	    Vira DISPONIVEL_PARA_RETIRADA
-           //18/09/2026	    19/09/2026	    18 <= 19	  Sim	    Vira DISPONIVEL_PARA_RETIRADA
-           //10/09/2026	    19/09/2026	    10 <= 19	  Sim	    Vira DISPONIVEL_PARA_RETIRADA, se ainda estiver ATIVA
-        List<Reserva> reservas =
-                reservaRepository
-                        .findByStatusAndLivroPossuiPrelancamentoTrueAndLivroDataLancamentoLessThanEqual(
-                                StatusReserva.ATIVA,
-                                hoje
-                        );
-
+        List<Reserva> reservas = reservaRepository.findByStatusAndExemplarLivroDataLancamentoLessThanEqual(
+                StatusReserva.ATIVA, LocalDate.now());
         for (Reserva reserva : reservas) {
-
-            reserva.setStatus(
-                    StatusReserva.DISPONIVEL_PARA_RETIRADA
-            );
-
-            reservaRepository.save(reserva);
+            Exemplar exemplar = exemplarService.bloquear(reserva.getExemplar().getId());
+            atualizarDisponibilidade(exemplar);
         }
     }
 }

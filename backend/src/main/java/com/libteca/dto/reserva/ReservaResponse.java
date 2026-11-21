@@ -1,15 +1,15 @@
 package com.libteca.dto.reserva;
 
-import com.libteca.dto.livro.LivroResponse;
-import com.libteca.dto.usuario.UsuarioResponse;
-
+import jakarta.validation.constraints.*;
 import java.time.LocalDate;
-
+import com.libteca.dto.exemplar.ExemplarResponse;
+import com.libteca.dto.usuario.UsuarioResponse;
+import com.libteca.enums.StatusReserva;
 public record ReservaResponse(
-
         Long id,
-        LivroResponse livro,
+        ExemplarResponse exemplar,
         UsuarioResponse usuario,
-        LocalDate dataReserva
-
+        Long funcionarioId,
+        LocalDate dataReserva,
+        StatusReserva status
 ) {}

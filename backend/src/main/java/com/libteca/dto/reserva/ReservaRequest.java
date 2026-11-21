@@ -1,13 +1,9 @@
 package com.libteca.dto.reserva;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 
 public record ReservaRequest(
-
-        @NotNull(message = "O livro é obrigatório")
-        Long livroId,
-
-        @NotNull(message = "O usuário é obrigatório")
-        Long usuarioId
-
+        @NotNull @Positive Long exemplarId,
+        @NotNull @Positive Long usuarioId,
+        @Positive Long funcionarioId
 ) {}

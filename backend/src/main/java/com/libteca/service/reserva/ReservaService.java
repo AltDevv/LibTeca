@@ -1,199 +1,113 @@
 package com.libteca.service.reserva;
 
-import com.libteca.dto.emprestimo.EmprestimoResponse;
-import com.libteca.dto.reserva.ReservaRequest;
-import com.libteca.dto.reserva.ReservaResponse;
-import com.libteca.entity.Emprestimo;
-import com.libteca.entity.Livro;
-import com.libteca.entity.Reserva;
-import com.libteca.entity.Usuario;
-import com.libteca.enums.StatusReserva;
-import com.libteca.enums.TypeLivro;
-import com.libteca.handler.livro.exception.LivroNaoEncontradoException;
+import com.libteca.dto.reserva.*;
+import com.libteca.dto.emprestimo.*;
+import com.libteca.entity.*;
+import com.libteca.enums.*;
 import com.libteca.handler.reserva.exception.*;
+import com.libteca.handler.livro.exception.LivroIndisponivelException;
 import com.libteca.handler.usuario.exception.UsuarioNaoEncontradoException;
-import com.libteca.mapper.EmprestimoMapper;
 import com.libteca.mapper.ReservaMapper;
-import com.libteca.repository.EmprestimoRepository;
-import com.libteca.repository.LivroRepository;
-import com.libteca.repository.ReservaRepository;
-import com.libteca.repository.UsuarioRepository;
-import jakarta.transaction.Transactional;
+import com.libteca.repository.*;
+import com.libteca.service.*;
+import com.libteca.service.emprestimo.EmprestimoService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import com.libteca.service.emprestimo.tipoEmprestimo.EmprestimoFisicoService;
-import com.libteca.service.emprestimo.tipoEmprestimo.EmprestimoVirtualService;
-
-
-import java.time.LocalDate;
-import java.util.List;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 @Service
+@Transactional
 public class ReservaService {
 
-    private final ReservaMapper reservaMapper;
     private final ReservaRepository reservaRepository;
-    private final LivroRepository livroRepository;
     private final UsuarioRepository usuarioRepository;
-    private final EmprestimoMapper emprestimoMapper;
-    private final EmprestimoVirtualService emprestimoVirtualService;
-    private final EmprestimoFisicoService emprestimoFisicoService;
-    private final EmprestimoRepository emprestimoRepository;
+    private final ReservaMapper reservaMapper;
+    private final ExemplarService exemplarService;
+    private final FuncionarioService funcionarioService;
+    private final ReservaLancamentoService reservaLancamentoService;
+    private final EmprestimoService emprestimoService;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper,
-                          LivroRepository livroRepository, UsuarioRepository usuarioRepository,
-                          EmprestimoMapper emprestimoMapper, EmprestimoVirtualService emprestimoVirtualService,
-                          EmprestimoFisicoService emprestimoFisicoService, EmprestimoRepository emprestimoRepository) {
+    public ReservaService(ReservaRepository reservaRepository, UsuarioRepository usuarioRepository,
+                          ReservaMapper reservaMapper, ExemplarService exemplarService,
+                          FuncionarioService funcionarioService, ReservaLancamentoService reservaLancamentoService,
+                          EmprestimoService emprestimoService) {
         this.reservaRepository = reservaRepository;
-        this.reservaMapper = reservaMapper;
-        this.livroRepository = livroRepository;
         this.usuarioRepository = usuarioRepository;
-        this.emprestimoMapper = emprestimoMapper;
-        this.emprestimoFisicoService = emprestimoFisicoService;
-        this.emprestimoVirtualService = emprestimoVirtualService;
-        this.emprestimoRepository = emprestimoRepository;
+        this.reservaMapper = reservaMapper;
+        this.exemplarService = exemplarService;
+        this.funcionarioService = funcionarioService;
+        this.reservaLancamentoService = reservaLancamentoService;
+        this.emprestimoService = emprestimoService;
     }
 
-    // Todos
     public Page<ReservaResponse> listarTodos(Pageable pageable) {
-
-        return reservaRepository
-                .findAll(pageable)
-                .map(reservaMapper::toResponse);
+        return reservaRepository.findAll(pageable).map(reservaMapper::toResponse);
     }
 
-    // Todos
-    public void apagarTodos() {
-        reservaRepository.deleteAll();
+    public ReservaResponse mostrarReserva(Long id) {
+        return reservaMapper.toResponse(buscarReserva(id));
     }
 
-    // Adicionar
+    private Reserva buscarReserva(Long id) {
+        return reservaRepository.findById(id)
+                .orElseThrow(() -> new ReservaNaoEncontradaException("Reserva não encontrada"));
+    }
+
     public ReservaResponse adicionarReserva(ReservaRequest request) {
-
-        Livro livro = livroRepository.findById(request.livroId())
-                .orElseThrow(() -> new LivroNaoEncontradoException("Livro não encontrado"));
-
+        Exemplar exemplar = exemplarService.bloquear(request.exemplarId());
         Usuario usuario = usuarioRepository.findById(request.usuarioId())
                 .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
-
-        //
-        List<StatusReserva> statusEmAndamento = List.of(StatusReserva.ATIVA, StatusReserva.DISPONIVEL_PARA_RETIRADA);
-
-        boolean jaExisteReserva =
-                reservaRepository.existsByLivroIdAndUsuarioIdAndStatusIn(
-                        livro.getId(),
-                        usuario.getId(),
-                        statusEmAndamento
-                );
-
-
-        if (jaExisteReserva) {
-            throw new JaPossuiReservaException(
-                    "Este usuário já possui uma reserva ativa para este livro"
-            );
+        Funcionario funcionario = funcionarioService.buscarAtivo(request.funcionarioId());
+        if (exemplar.getStatus() == StatusExemplar.INDISPONIVEL) {
+            throw new LivroIndisponivelException("Este exemplar está indisponível");
         }
-
-        if(livro.getLimiteReservas() != null){
-
-            //Verificação de quantas reservas já se tem para verificar se é possível mais uma
-            long reservasAtivas = reservaRepository.countByLivroIdAndStatusIn(livro.getId(), statusEmAndamento);
-
-
-            if (reservasAtivas >= livro.getLimiteReservas()){
-                throw new LimiteReservasAtingidoException("O limite de reservas foi atingido");
-            }
+        if (!reservaRepository.findByExemplarIdAndStatusInOrderByDataReservaAscIdAsc(
+                exemplar.getId(), ReservaLancamentoService.EM_ANDAMENTO).isEmpty()) {
+            throw new JaPossuiReservaException("Este exemplar já possui uma reserva em andamento");
         }
-
-        Reserva reserva = reservaMapper.toEntity(request, livro, usuario);
-
-        Reserva salvo = reservaRepository.save(reserva);
-
-        return reservaMapper.toResponse(salvo);
-    }
-
-    // Buscar por ID
-    public ReservaResponse mostrarReserva(Long id) {
-
-        Reserva reserva = reservaRepository.findById(id)
-                .orElseThrow(() -> new ReservaNaoEncontradaException("Reserva não encontrada"));
-
+        Reserva reserva = reservaMapper.toEntity(exemplar, usuario, funcionario);
+        reservaRepository.saveAndFlush(reserva);
+        reservaLancamentoService.atualizarDisponibilidade(exemplar);
         return reservaMapper.toResponse(reserva);
     }
 
-    // Cancelar reserva (marca como inativa em vez de apagar)
     public ReservaResponse cancelarReserva(Long id) {
-
-        Reserva reserva = reservaRepository.findById(id)
+        Exemplar exemplar = exemplarService.bloquear(buscarReserva(id).getExemplar().getId());
+        Reserva reserva = reservaRepository.buscarParaAtualizar(id)
                 .orElseThrow(() -> new ReservaNaoEncontradaException("Reserva não encontrada"));
-
-        if (reserva.getStatus().equals(StatusReserva.CANCELADA)) {
+        exemplarService.recarregar(reserva);
+        if (reserva.getStatus() == StatusReserva.CANCELADA) {
             throw new ReservaFoiCanceladaException("Esta reserva já está cancelada");
         }
-
+        if (!ReservaLancamentoService.EM_ANDAMENTO.contains(reserva.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Esta reserva já foi encerrada");
+        }
         reserva.setStatus(StatusReserva.CANCELADA);
-
-        Reserva salvo = reservaRepository.save(reserva);
-
-        return reservaMapper.toResponse(salvo);
+        reservaRepository.flush();
+        reservaLancamentoService.atualizarDisponibilidade(exemplar);
+        return reservaMapper.toResponse(reserva);
     }
 
-    // Apagar por ID
+    public EmprestimoResponse retirarReserva(Long id, RetiradaReservaRequest request) {
+        Reserva reserva = buscarReserva(id);
+        return emprestimoService.retirarReserva(new EmprestimoRequest(
+                reserva.getExemplar().getId(), reserva.getUsuario().getId(),
+                request.funcionarioId(), request.dataPrevistaDevolucao()), id);
+    }
+
     public void apagarReserva(Long id) {
-
-        if (!reservaRepository.existsById(id)) {
-            throw new ReservaNaoEncontradaException("Reserva não encontrada");
+        Reserva reserva = buscarReserva(id);
+        exemplarService.bloquear(reserva.getExemplar().getId());
+        if (ReservaLancamentoService.EM_ANDAMENTO.contains(reserva.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cancele a reserva antes de excluí-la");
         }
-
-        reservaRepository.deleteById(id);
+        reservaRepository.delete(reserva);
     }
 
-    @Transactional
-    public EmprestimoResponse retirarReserva(Long id){
-
-        //Verificar se a reserva existe antes de retirar ela
-        Reserva reserva = reservaRepository.findById(id)
-                .orElseThrow(() ->
-                        new ReservaNaoEncontradaException("Reserva não encontrada")
-                );
-
-        if (reserva.getStatus() != StatusReserva.DISPONIVEL_PARA_RETIRADA) {
-            throw new ReservaNaoDisponivelParaRetiradaException(
-                    "Esta reserva não está disponível para retirada"
-            );
-        }
-
-        //Buscando da reserva suas informações
-        Livro livro = reserva.getLivro();
-        Usuario usuario = reserva.getUsuario();
-
-        //Data de emprestimo e possível expiração
-        LocalDate dataDeRetirada = LocalDate.now();
-        LocalDate dataExpiracao = null;
-
-
-        if (livro.getTipo() == TypeLivro.FISICO) {
-
-            emprestimoFisicoService.emprestarFisico(livro);
-
-        } else if (livro.getTipo() == TypeLivro.VIRTUAL) {
-
-            dataExpiracao =
-                    emprestimoVirtualService.emprestarVirtual(livro);
-        }
-
-        Emprestimo emprestimo =
-                emprestimoMapper.toEntity(
-                        livro,
-                        usuario,
-                        dataDeRetirada,
-                        dataExpiracao
-                );
-
-        Emprestimo salvo = emprestimoRepository.save(emprestimo);
-
-        reserva.setStatus(StatusReserva.CONCLUIDA);
-
-        return emprestimoMapper.toResponse(salvo);
+    public void apagarTodos() {
+        for (Reserva reserva : reservaRepository.findAll()) apagarReserva(reserva.getId());
     }
 }
