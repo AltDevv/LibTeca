@@ -12,7 +12,7 @@ export const biblioteca={
     livro:id=>requisitar('/livros/'+id),
     exemplares:id=>requisitar('/catalogo/'+id+'/exemplares'),
     meus:tipo=>requisitar('/minha-conta/'+tipo),
-    criar:(recurso,dados)=>requisitar('/'+recurso,{method:'POST',body:dados}),
+    criar:(recurso,dados)=>requisitar('/'+recurso+(recurso==='exemplares'&&dados.tipo==='VIRTUAL'?'/virtuais':''),{method:'POST',body:dados}),
     alterar:(caminho,dados,method='PATCH')=>requisitar(caminho,{method,body:dados}),
     excluir:(recurso,id)=>requisitar('/'+recurso+'/'+id,{method:'DELETE'}),
     async enviar(arquivo,tipo) {const dados=new FormData();dados.set('arquivo',arquivo);dados.set('tipo',tipo);return requisitar('/arquivos',{method:'POST',body:dados});}

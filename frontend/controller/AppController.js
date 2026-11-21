@@ -1,5 +1,7 @@
+import { prazoTela } from '../telas/PrazoTela.js';
 import { prepararCapa,arquivoCapa } from './CapaController.js';
 import { configuracaoTela } from '../telas/ConfiguracaoTela.js';
+import { administracaoTela } from '../telas/AdministracaoTela.js';
 import { exemplosVisiveis,removerExemplo } from '../entity/LivrosExemplo.js';
 import { Sessao } from '../entity/Sessao.js';
 import { biblioteca,autenticacao,configuracao } from '../service/BibliotecaService.js';
@@ -11,6 +13,7 @@ import { esc,vazio,botao } from '../mapper/VisualMapper.js';
 import { estrutura } from '../telas/EstruturaTela.js';
 import { catalogoTela,cardsLivros,cardsExemplo } from '../telas/CatalogoTela.js';
 import { livroTela } from '../telas/LivroTela.js';
+import { leitorTela } from '../telas/LeitorTela.js';
 import { autenticacaoTela } from '../telas/AutenticacaoTela.js';
 import { circulacaoTela } from '../telas/CirculacaoTela.js';
 import { painelTela,tabelaTela,cadastrosTela } from '../telas/GestaoTela.js';
@@ -18,6 +21,7 @@ import { perfilTela } from '../telas/PerfilTela.js';
 import { formularioTela } from '../telas/FormularioTela.js';
 
 let info={nome:'LibTeca',configurada:false},sessao=new Sessao(), registros=[], pagina=0, versao=0, buscaVersao=0;
+let quantidadePagina=12,observadorCatalogo;
 const modal=document.querySelector('#modal');
 const titulos={configuracao:'Minha biblioteca',catalogo:'Catálogo',livro:'Detalhes do livro',login:'Entrar',cadastro:'Criar conta',emprestimos:'Meus empréstimos',reservas:'Minhas reservas',painel:'Visão geral',acervo:'Livros',exemplares:'Exemplares',usuarios:'Usuários',cadastros:'Cadastros',equipe:'Equipe',circulacao:'Empréstimos',fila:'Reservas',perfil:'Minha conta',leitor:'Leitor digital'};
 const rotaAtual=()=>location.hash.replace(/^#\/?/,'').split('/').filter(Boolean);
@@ -28,9 +32,16 @@ const fecharModal=()=>modal.close();
 const fecharMenu=()=>{document.body.classList.remove('menu-aberto');const botao=document.querySelector('.menu-toggle');botao?.setAttribute('aria-expanded','false');botao?.focus();};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('menu-aberto'))fecharMenu();});
 const carregando=()=>'<div class="loading" role="status">Buscando na biblioteca…</div>';
+const quantidadeCatalogo=()=>{
+    const grade=document.querySelector('#livros-grid');
+    const colunas=getComputedStyle(grade).gridTemplateColumns.split(' ').filter(Boolean).length;
+    // Completa a última linha antes de enviar os livros restantes à próxima página.
+    return Math.ceil(12/colunas)*colunas;
+};
 
 async function navegar(){
     const minhaVersao=++versao;
+    observadorCatalogo?.disconnect();
     let [rota='catalogo',id]=rotaAtual();
     document.body.classList.remove('menu-aberto');
     if(modal.open) modal.close();
@@ -52,10 +63,21 @@ async function navegar(){
         if(['catalogo','acervo'].includes(rota)){
             const categorias=await biblioteca.listar('categorias');
             if(minhaVersao!==versao)return;
-            conteudo().innerHTML=catalogoTela(categorias,rota==='acervo',info.nome);pagina=0;await buscarCatalogo();return;
+            conteudo().innerHTML=catalogoTela(categorias,rota==='acervo',info.nome);pagina=0;quantidadePagina=quantidadeCatalogo();
+            observadorCatalogo=new ResizeObserver(()=>{
+                if(minhaVersao!==versao)return;
+                const quantidade=quantidadeCatalogo();
+                if(quantidade===quantidadePagina)return;
+                pagina=Math.floor(pagina*quantidadePagina/quantidade);quantidadePagina=quantidade;buscarCatalogo();
+            });
+            observadorCatalogo.observe(document.querySelector('#livros-grid'));
+            await buscarCatalogo();return;
         }
         if(rota==='configuracao') html=configuracaoTela(info,sessao);
-        else if(rota==='livro'){const [livro,exemplares]=await Promise.all([biblioteca.livro(id),biblioteca.exemplares(id)]);html=livroTela(livro,exemplares,sessao);}
+        else if(rota==='livro'){
+            const [livro,exemplares,emprestimos,reservas]=await Promise.all([biblioteca.livro(id),biblioteca.exemplares(id),sessao.autenticado?biblioteca.meus('emprestimos'):[],sessao.autenticado?biblioteca.meus('reservas'):[]]);
+            html=livroTela(livro,exemplares,sessao,emprestimos,reservas);
+        }
         else if(rota==='login'||rota==='cadastro') html=autenticacaoTela(rota==='cadastro');
         else if(['emprestimos','reservas','circulacao','fila'].includes(rota)){
             const gestao=['circulacao','fila'].includes(rota),tipo=['reservas','fila'].includes(rota)?'reservas':'emprestimos';
@@ -67,14 +89,14 @@ async function navegar(){
         } else if(['exemplares','usuarios','equipe'].includes(rota)||rota==='cadastros'){
             const recurso=rota==='equipe'?'funcionarios':rota==='cadastros'?(id||'autores'):rota;
             if(!['exemplares','usuarios','funcionarios','autores','categorias','editoras'].includes(recurso))throw new Error('Página não encontrada.');
-            registros=await biblioteca.listar(recurso);html=rota==='cadastros'?cadastrosTela(recurso,registros):tabelaTela(recurso,registros);
+            registros=await biblioteca.listar(recurso);html=rota==='cadastros'?cadastrosTela(recurso,registros):tabelaTela(recurso,registros,false,id,sessao);
         }
         else if(rota==='perfil') html=perfilTela(sessao,await biblioteca.meus('telefones'));
         else if(rota==='leitor'){
             const meus=await biblioteca.meus('emprestimos');
             const emprestimo=meus.find(e=>String(e.id)===id);
             if(!emprestimo||emprestimo.exemplar.tipo!=='VIRTUAL'||emprestimo.dataDevolucao||emprestimo.status!=='ATIVO'||emprestimo.dataExpiracao<new Date().toLocaleDateString('en-CA'))throw new Error('Não há um empréstimo digital vigente para esta leitura.');
-            html='<a class="back-link" href="#/emprestimos">← Meus empréstimos</a><div class="page-heading"><div><p class="eyebrow">SUA LEITURA</p><h1>'+esc(emprestimo.exemplar.livro.titulo)+'</h1></div><a class="btn secundario" href="/api/arquivos/leitura/'+Number(id)+'" target="_blank" rel="noopener">Abrir leitura em outra aba ↗</a></div><p class="muted">Se seu navegador não mostrar o PDF abaixo, use o botão de abrir em outra aba.</p><iframe class="leitor" title="Leitura do livro" src="/api/arquivos/leitura/'+Number(id)+'#toolbar=0"></iframe>';
+            html=leitorTela(emprestimo);
         } else html=vazio('Página não encontrada','Volte ao catálogo para continuar.','<a class="btn" href="#/catalogo">Ir ao catálogo</a>');
         if(minhaVersao!==versao)return;
         conteudo().innerHTML=html;
@@ -86,7 +108,7 @@ async function navegar(){
 async function buscarCatalogo(){
     const form=document.querySelector('#filtro-livros');if(!form)return;
     const requisicao=++buscaVersao,versaoTela=versao;
-    const params=filtroLivro(form,pagina);
+    const params=filtroLivro(form,pagina,quantidadePagina);
     if(document.querySelector('#so-disponiveis').checked)params.set('quantidadeMinima','1');
     document.querySelector('#livros-grid').innerHTML=carregando();
     try {
@@ -101,8 +123,10 @@ async function buscarCatalogo(){
     }catch(erro){if(versaoTela===versao)document.querySelector('#livros-grid').innerHTML=vazio('Não foi possível buscar',mensagemErro(erro),botao('Tentar novamente','buscar','','btn'));}
 }
 async function novo(recurso){
-    const dependencias={livros:['autores','categorias','editoras'],exemplares:['livros'],funcionarios:['usuarios'],emprestimos:['usuarios','exemplares'],reservas:['usuarios','exemplares']}[recurso]||[];
+    if(recurso==='funcionarios'&&!sessao.administrador)throw new Error('Somente o administrador pode cadastrar funcionários.');
+    const dependencias={livros:['autores','categorias','editoras'],exemplares:['livros'],funcionarios:['usuarios','funcionarios'],emprestimos:['usuarios','exemplares'],reservas:['usuarios','exemplares']}[recurso]||[];
     const opcoes={};await Promise.all(dependencias.map(async nome=>{opcoes[nome]=await biblioteca.listar(nome);}));
+    if(recurso==='funcionarios')opcoes.usuarios=opcoes.usuarios.filter(u=>u.role==='USER'&&!opcoes.funcionarios.some(f=>f.usuario.id===u.id)).map(u=>({...u,nome:u.nome+' — '+u.email}));
     abrirModal(formularioTela(recurso,opcoes));
 }
 async function editar(recurso,id){
@@ -114,9 +138,19 @@ async function editar(recurso,id){
     const valores=recurso==='livros'?{...registro,editoraId:registro.editora.id,autoresIds:registro.autores.map(a=>a.id),categoriasIds:registro.categorias.map(c=>c.id)}:{...registro,livroId:registro.livro.id};
     for(const campo of form.elements){if(!campo.name||campo.type==='file')continue;
         if(campo.dataset.listaNumero!==undefined)campo.checked=valores[campo.name]?.includes(Number(campo.value));
+        else if(campo.type==='checkbox')campo.checked=campo.name==='permiteReserva'?(registro.limiteReservas??3)>0:!!valores[campo.name];
         else campo.value=valores[campo.name]??'';
     }
     atualizarFormato();
+    atualizarReserva();
+}
+function atualizarReserva(){
+    const permitir=document.querySelector('[name="permiteReserva"]');
+    const limite=document.querySelector('[name="limiteReservas"]');
+    if(!permitir||!limite)return;
+    limite.disabled=!permitir.checked;
+    limite.closest('label').hidden=!permitir.checked;
+    if(permitir.checked&&Number(limite.value)<1)limite.value=3;
 }
 async function confirmar(titulo,texto,operacao,destino){
     abrirModal('<div class="modal-header"><h2 id="modal-titulo">'+esc(titulo)+'</h2><button class="icon-btn" data-acao="fechar-modal" aria-label="Fechar">×</button></div><p style="margin-top:20px">'+esc(texto)+'</p><p class="form-error" role="alert"></p><div class="modal-footer"><button class="btn secundario" data-acao="fechar-modal">Voltar</button><button class="btn" id="confirmar-acao">Confirmar</button></div>');
@@ -132,6 +166,11 @@ document.addEventListener('click',async evento=>{
     const alvo=evento.target.closest('[data-acao]');if(!alvo)return;
     const acao=alvo.dataset.acao,id=alvo.dataset.id;
     try{
+        if(['transferir-administracao','apagar-sistema'].includes(acao)){
+            if(!sessao.administrador)throw new Error('Somente o administrador pode realizar esta operação.');
+            const equipe=acao==='transferir-administracao'?(await biblioteca.listar('funcionarios')).filter(f=>f.ativo&&f.usuario.role==='FUNCIONARIO'&&f.usuario.id!==sessao.usuario.id):[];
+            abrirModal(administracaoTela(acao,info.nome,equipe));return;
+        }
         if(acao==='remover-exemplo'){removerExemplo(Number(id),localStorage);await buscarCatalogo();return;}
         if(acao==='fechar-menu'){fecharMenu();return;}
         if(acao==='menu'){const aberto=document.body.classList.toggle('menu-aberto');alvo.setAttribute('aria-expanded',aberto);if(aberto)document.querySelector('#sidebar .nav-item').focus();return;}
@@ -154,14 +193,17 @@ document.addEventListener('click',async evento=>{
             await confirmar(f.ativo?'Desativar funcionário?':'Ativar funcionário?','A situação determina se esta conta pode trabalhar na biblioteca.',
                 ()=>biblioteca.alterar('/funcionarios/'+id,{usuarioId:f.usuario.id,dataAdmissao:f.dataAdmissao,ativo:!f.ativo},'PUT'));return;
         }
-        if(acao==='retirar-gestao'){
-            abrirModal('<div class="modal-header"><h2 id="modal-titulo">Retirar reserva</h2><button class="icon-btn" data-acao="fechar-modal" aria-label="Fechar">×</button></div><form id="form-retirada" data-id="'+Number(id)+'"><label>Prazo de devolução<input type="date" name="dataPrevistaDevolucao" min="'+new Date().toLocaleDateString('en-CA')+'" required></label><p class="form-error" role="alert"></p><button class="btn">Confirmar retirada</button></form>');return;
+        if(['emprestar-fisico','emprestar-digital','retirar','retirar-gestao'].includes(acao)){
+            const reserva=acao.startsWith('retirar');
+            const caminho=acao==='retirar-gestao'?'/reservas/'+id+'/retirar':reserva?'/minha-conta/reservas/'+id+'/retirar':'/minha-conta/emprestimos/'+id;
+            abrirModal('<div class="modal-header"><h2 id="modal-titulo">'+(acao==='emprestar-fisico'?'Solicitar empréstimo físico':acao==='retirar-gestao'?'Confirmar entrega da reserva':'Iniciar empréstimo digital')+'</h2><button class="icon-btn" data-acao="fechar-modal" aria-label="Fechar">×</button></div><form id="form-prazo" data-caminho="'+caminho+'" data-method="'+(reserva?'PATCH':'POST')+'">'+prazoTela()+'<p>'+(acao==='emprestar-fisico'?'O prazo começa quando a equipe confirmar a entrega.':'O prazo começa na confirmação deste empréstimo.')+'</p><p class="form-error" role="alert"></p><button class="btn" id="confirmar-acao" type="submit">Confirmar</button></form>');return;
         }
         const operacoes={
             'reservar':['Reservar exemplar?','Você poderá acompanhar a situação em Minhas reservas.','/minha-conta/reservas/'+id,'POST'],
-            'emprestar-digital':['Começar esta leitura?','O empréstimo digital terá prazo de 14 dias.','/minha-conta/emprestimos/'+id,'POST'],
+            'entregar-gestao':['Confirmar entrega do livro?','Confirme somente ao entregar o exemplar ao leitor. O prazo escolhido pelo leitor começará hoje, e você ficará registrado como responsável.','/emprestimos/'+id+'/entregar','PATCH'],
+            'cancelar-emprestimo':['Cancelar solicitação?','O exemplar será liberado para a biblioteca ou para a próxima reserva.','/minha-conta/emprestimos/'+id+'/cancelar','PATCH'],
+            'cancelar-emprestimo-gestao':['Cancelar solicitação?','Cancele somente se o leitor ainda não recebeu o livro.','/emprestimos/'+id+'/cancelar','PATCH'],
             'cancelar':['Cancelar reserva?','O exemplar deixará de ficar reservado para você.','/minha-conta/reservas/'+id+'/cancelar','PATCH'],
-            'retirar':['Iniciar empréstimo digital?','O prazo de leitura será de 14 dias.','/minha-conta/reservas/'+id+'/retirar','PATCH'],
             'devolver':['Devolver exemplar?','O empréstimo será encerrado e o acesso digital terminará.','/minha-conta/emprestimos/'+id+'/devolver','PATCH'],
             'cancelar-gestao':['Cancelar reserva?','A reserva será encerrada.','/reservas/'+id+'/cancelar','PATCH'],
             'devolver-gestao':['Registrar devolução?','Confirme que o exemplar foi devolvido.','/emprestimos/'+id+'/devolver','PATCH'],
@@ -183,7 +225,17 @@ document.addEventListener('submit',async evento=>{
     const erroCampo=form.querySelector('.form-error');if(erroCampo)erroCampo.textContent='';
     try {
         const dados=dadosFormulario(form);
-        if(form.id==='form-banco'){
+        if(form.id==='form-prazo'){
+            await biblioteca.alterar(form.dataset.caminho,dados,form.dataset.method);fecharModal();avisar('Empréstimo registrado.');await navegar();
+        } else if(form.id==='form-administracao'){
+            const apagar=form.dataset.operacao==='apagar';
+            await biblioteca.alterar(apagar?'/biblioteca':'/biblioteca/transferir',dados,apagar?'DELETE':'POST');
+            fecharModal();sessao=new Sessao();
+            if(apagar)localStorage.removeItem('libteca.exemplos.removidos');
+            await autenticacao.renovar();
+            location.hash=apagar?'/configuracao':'/login';await navegar();
+            avisar(apagar?'Biblioteca apagada. Inicie uma nova configuração.':'Administração transferida. Entre novamente com sua conta.');
+        } else if(form.id==='form-banco'){
             await configuracao.escolherBanco(dados);
             document.querySelector('#banco-progresso').textContent='Banco verificado. Iniciando o LibTeca…';
             let pronta=false;
@@ -218,8 +270,6 @@ document.addEventListener('submit',async evento=>{
             if(pdf)dados.caminhoArquivo=(await biblioteca.enviar(pdf,'livro')).caminho;
             if(form.dataset.id)await biblioteca.alterar('/'+recurso+'/'+form.dataset.id,dados,'PUT');
             else await biblioteca.criar(recurso,dados);fecharModal();avisar('Cadastro salvo com sucesso.');await navegar();
-        } else if(form.id==='form-retirada'){
-            await biblioteca.alterar('/reservas/'+form.dataset.id+'/retirar',dados);fecharModal();avisar('Empréstimo registrado.');await navegar();
         } else if(form.id==='form-senha'){
             await biblioteca.alterar('/minha-conta/senha',dados);form.reset();avisar('Senha alterada.');
         } else if(form.id==='form-telefone'){
@@ -235,7 +285,7 @@ document.addEventListener('input',e=>{
         const vazio=document.querySelector('#sem-filtro');if(vazio)vazio.hidden=encontrados>0;
     }
 });
-document.addEventListener('change',e=>{if(e.target.id==='tipo-banco'){const grupo=document.querySelector('#dados-mysql');grupo.hidden=e.target.value!=='mysql';grupo.querySelectorAll('input').forEach(c=>c.disabled=grupo.hidden);}if(e.target.id==='tipo-exemplar')atualizarFormato();if(e.target.id==='so-disponiveis'){pagina=0;buscarCatalogo();}});
+document.addEventListener('change',e=>{if(e.target.name==='permiteReserva')atualizarReserva();if(e.target.id==='tipo-banco'){const grupo=document.querySelector('#dados-mysql');grupo.hidden=e.target.value!=='mysql';grupo.querySelectorAll('input').forEach(c=>c.disabled=grupo.hidden);}if(e.target.id==='tipo-exemplar')atualizarFormato();if(e.target.id==='so-disponiveis'){pagina=0;buscarCatalogo();}});
 document.addEventListener('error',e=>{if(e.target.matches?.('.capa img'))e.target.classList.add('falhou');},true);
 window.addEventListener('hashchange',navegar);
 try {sessao=new Sessao(await autenticacao.eu());} catch(erro){if(erro.status!==401)avisar(mensagemErro(erro),true);}
