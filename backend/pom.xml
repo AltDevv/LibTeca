@@ -18,10 +18,15 @@
 
 	<properties>
 		<java.version>17</java.version>
+        <testes.excluidos>playwright</testes.excluidos>
+        <testes.fontes>${project.basedir}/src/test/java</testes.fontes>
+        <testes.classes>${project.basedir}/target/test-classes</testes.classes>
+        <testes.relatorios>${project.basedir}/target/surefire-reports</testes.relatorios>
 	</properties>
 
 	<dependencies>
-        <dependency>
+
+		<dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>3.2.0</version>
@@ -121,8 +126,18 @@
 	</dependencies>
 
 	<build>
+        <testSourceDirectory>${testes.fontes}</testSourceDirectory>
+        <testOutputDirectory>${testes.classes}</testOutputDirectory>
 
 		<plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludedGroups>${testes.excluidos}</excludedGroups>
+                    <reportsDirectory>${testes.relatorios}</reportsDirectory>
+                </configuration>
+            </plugin>
 
             <!-- Copia as telas no build sem tornar frontEnd uma raiz de recursos do módulo Java. -->
             <plugin>
@@ -175,5 +190,35 @@
 
 		</plugins>
 	</build>
-
+    <profiles>
+        <profile>
+            <id>front-playwright</id>
+            <properties>
+                <testes.excluidos>nenhum</testes.excluidos>
+                <testes.fontes>${project.basedir}/../frontEnd/tests/playwright</testes.fontes>
+                <testes.classes>${project.basedir}/../frontEnd/target/test-classes</testes.classes>
+                <testes.relatorios>${project.basedir}/../frontEnd/target/surefire-reports</testes.relatorios>
+                <testes.evidencias>${project.basedir}/../frontEnd/target/playwright</testes.evidencias>
+            </properties>
+            <dependencies><dependency>
+                <groupId>com.microsoft.playwright</groupId>
+                <artifactId>playwright</artifactId>
+                <version>1.64.0</version>
+                <scope>test</scope>
+            </dependency></dependencies>
+            <build>
+                <plugins><plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <groups>playwright</groups>
+                    <reportsDirectory>${testes.relatorios}</reportsDirectory>
+                    <systemPropertyVariables>
+                        <playwright.output>${testes.evidencias}</playwright.output>
+                    </systemPropertyVariables>
+                    <argLine>"-javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar"</argLine>
+                </configuration>
+            </plugin></plugins></build>
+        </profile>
+    </profiles>
 </project>
