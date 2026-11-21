@@ -1,18 +1,17 @@
 package com.libteca.dto.emprestimo;
 
-import com.libteca.dto.livro.LivroResponse;
+import jakarta.validation.constraints.*;
+import java.time.LocalDate;
+import com.libteca.dto.exemplar.ExemplarResponse;
 import com.libteca.dto.usuario.UsuarioResponse;
 import com.libteca.enums.StatusEmprestimo;
-
-import java.time.LocalDate;
-
 public record EmprestimoResponse(
         Long id,
-        LivroResponse livro,
+        ExemplarResponse exemplar,
         UsuarioResponse usuario,
+        Long funcionarioId,
         LocalDate dataEmprestimo,
         LocalDate dataExpiracao,
         LocalDate dataDevolucao,
         StatusEmprestimo status
 ) {}
-

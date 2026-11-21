@@ -1,52 +1,56 @@
 package com.libteca.entity;
 
-import com.libteca.enums.StatusEmprestimo;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
-import jakarta.validation.constraints.NotNull;
-
+import com.libteca.enums.StatusEmprestimo;
 import java.time.LocalDate;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
 @Entity
-public class Emprestimo{
+@Table(name = "emprestimo")
+public class Emprestimo {
 
-    //Id
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "idemprestimo")
     private Long id;
 
-    //livro
-    @NotNull(message = "O livro é obrigatório")
-    @ManyToOne
-    @JoinColumn(name = "livro_id", nullable = false)
-    private Livro livro;
+    @NotNull
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "idexemplar", nullable = false)
+    private Exemplar exemplar;
 
-    //usuário que pegou o livro emprestado
-    @NotNull(message = "O usuário é obrigatório")
-    @ManyToOne
-    @JoinColumn(name = "usuario_id", nullable = false)
+    @NotNull
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "idusuario", nullable = false)
     private Usuario usuario;
 
-    //data em que o empréstimo foi feito
-    @NotNull(message = "A data do empréstimo é obrigatória")
-    @Column(nullable = false)
+    // Nulo quando a operação é feita pelo próprio usuário.
+    @ManyToOne
+    @JoinColumn(name = "idfuncionario")
+    private Funcionario funcionario;
+
+    @NotNull
+    @Column(name = "data_emprestimo", nullable = false)
     private LocalDate dataEmprestimo;
 
-    // Data em que o acesso ao livro virtual expira.
-    // Nulo quando não houver expiração.
+    @NotNull
+    @Column(name = "data_expiracao", nullable = false)
     private LocalDate dataExpiracao;
 
-    //data em que o livro foi de fato devolvido (nulo enquanto não devolvido)
-    //serve para representar se ele foi devolvido ou não verificando se é nulo.
-    @Column(nullable = true)
+    // Data efetiva; permanece nula enquanto o exemplar não for devolvido.
+    @Column(name = "data_devolucao")
     private LocalDate dataDevolucao;
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "status_emprestimo", nullable = false, length = 9)
     private StatusEmprestimo status = StatusEmprestimo.ATIVO;
 
 }

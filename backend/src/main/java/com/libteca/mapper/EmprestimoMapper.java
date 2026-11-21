@@ -1,55 +1,35 @@
 package com.libteca.mapper;
 
-import com.libteca.dto.emprestimo.EmprestimoRequest;
 import com.libteca.dto.emprestimo.EmprestimoResponse;
-import com.libteca.entity.Emprestimo;
-import com.libteca.entity.Livro;
-import com.libteca.entity.Usuario;
-import org.springframework.stereotype.Component;
-
+import com.libteca.entity.*;
 import java.time.LocalDate;
+import org.springframework.stereotype.Component;
 
 @Component
 public class EmprestimoMapper {
 
-    private final LivroMapper livroMapper;
+    private final ExemplarMapper exemplarMapper;
     private final UsuarioMapper usuarioMapper;
 
-    public EmprestimoMapper(
-            LivroMapper livroMapper,
-            UsuarioMapper usuarioMapper
-    ) {
-        this.livroMapper = livroMapper;
+    public EmprestimoMapper(ExemplarMapper exemplarMapper, UsuarioMapper usuarioMapper) {
+        this.exemplarMapper = exemplarMapper;
         this.usuarioMapper = usuarioMapper;
     }
 
-    public Emprestimo toEntity(
-            Livro livro,
-            Usuario usuario,
-            LocalDate dataEmprestimo,
-            LocalDate dataExpiracao
-    ) {
-
+    public Emprestimo toEntity(Exemplar exemplar, Usuario usuario, Funcionario funcionario, LocalDate dataPrevistaDevolucao) {
         Emprestimo emprestimo = new Emprestimo();
-
-        emprestimo.setLivro(livro);
+        emprestimo.setExemplar(exemplar);
         emprestimo.setUsuario(usuario);
-        emprestimo.setDataEmprestimo(dataEmprestimo);
-        emprestimo.setDataExpiracao(dataExpiracao);
-
+        emprestimo.setFuncionario(funcionario);
+        emprestimo.setDataEmprestimo(LocalDate.now());
+        emprestimo.setDataExpiracao(dataPrevistaDevolucao);
         return emprestimo;
     }
 
     public EmprestimoResponse toResponse(Emprestimo emprestimo) {
-
-        return new EmprestimoResponse(
-                emprestimo.getId(),
-                livroMapper.toResponse(emprestimo.getLivro()),
+        return new EmprestimoResponse(emprestimo.getId(), exemplarMapper.toResponse(emprestimo.getExemplar()),
                 usuarioMapper.toResponse(emprestimo.getUsuario()),
-                emprestimo.getDataEmprestimo(),
-                emprestimo.getDataExpiracao(),
-                emprestimo.getDataDevolucao(),
-                emprestimo.getStatus()
-        );
+                emprestimo.getFuncionario() == null ? null : emprestimo.getFuncionario().getId(),
+                emprestimo.getDataEmprestimo(), emprestimo.getDataExpiracao(), emprestimo.getDataDevolucao(), emprestimo.getStatus());
     }
 }

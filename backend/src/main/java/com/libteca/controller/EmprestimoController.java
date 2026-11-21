@@ -15,10 +15,12 @@ import java.util.List;
 @RequestMapping("/api/emprestimos")
 public class EmprestimoController {
 
+    private final com.libteca.service.AcessoService acesso;
     private final EmprestimoService emprestimoService;
 
-    public EmprestimoController(EmprestimoService emprestimoService) {
+    public EmprestimoController(EmprestimoService emprestimoService, com.libteca.service.AcessoService acesso) {
         this.emprestimoService = emprestimoService;
+        this.acesso = acesso;
     }
 
     @GetMapping
@@ -33,7 +35,7 @@ public class EmprestimoController {
 
     @PostMapping
     public EmprestimoResponse adicionarEmprestimo(@Valid @RequestBody EmprestimoRequest request) {
-        return emprestimoService.adicionarEmprestimo(request);
+        return emprestimoService.adicionarEmprestimo(new EmprestimoRequest(request.exemplarId(), request.usuarioId(), acesso.funcionarioAtual(), request.dataPrevistaDevolucao()));
     }
 
     @PatchMapping("/{id}/devolver")

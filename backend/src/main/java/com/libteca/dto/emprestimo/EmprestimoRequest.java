@@ -1,18 +1,11 @@
 package com.libteca.dto.emprestimo;
 
-import jakarta.validation.constraints.NotNull;
-
+import jakarta.validation.constraints.*;
 import java.time.LocalDate;
-
 public record EmprestimoRequest(
-
-        @NotNull(message = "O livro é obrigatório")
-        Long livroId,
-
-        @NotNull(message = "O usuário é obrigatório")
-        Long usuarioId,
-
+        @NotNull @Positive Long exemplarId,
+        @NotNull @Positive Long usuarioId,
+        @Positive Long funcionarioId,
         @NotNull(message = "A data prevista de devolução é obrigatória")
-        LocalDate dataPrevistaDevolucao
-
+        @FutureOrPresent LocalDate dataPrevistaDevolucao
 ) {}
