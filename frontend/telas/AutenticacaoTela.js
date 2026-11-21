@@ -1,0 +1,5 @@
+export function autenticacaoTela(cadastro=false){
+    return '<div class="auth-layout"><div class="auth-panel"><a href="#/catalogo" class="back-link">← Explorar o catálogo</a><h2>'+(cadastro?'Criar conta':'Entrar')+'</h2><form id="form-auth" data-cadastro="'+cadastro+'">'+
+    (cadastro?'<label>Seu nome<input name="nome" required maxlength="70" autocomplete="name" placeholder="Nome completo"></label>':'')+
+    '<label>Email<input name="email" type="email" required maxlength="100" autocomplete="username" placeholder="voce@exemplo.com"></label><label>Senha<input name="senha" type="password" required minlength="6" autocomplete="'+(cadastro?'new-password':'current-password')+'" placeholder="Sua senha"></label><p class="form-error" role="alert"></p><button class="btn largo">'+(cadastro?'Criar minha conta':'Entrar')+'</button></form><p class="auth-switch">'+(cadastro?'Já tem uma conta? <a href="#/login">Entrar</a>':'Ainda não tem conta? <a href="#/cadastro">Cadastre-se</a>')+'</p></div></div>';
+}
