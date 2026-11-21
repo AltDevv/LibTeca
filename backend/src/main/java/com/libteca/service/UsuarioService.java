@@ -4,6 +4,7 @@ import com.libteca.dto.usuario.SenhaRequest;
 import com.libteca.dto.usuario.UsuarioRequest;
 import com.libteca.dto.usuario.UsuarioResponse;
 import com.libteca.entity.Usuario;
+import com.libteca.enums.Role;
 import com.libteca.handler.usuario.exception.SenhaIncorretaException;
 import com.libteca.handler.usuario.exception.UsuarioJaExisteException;
 import com.libteca.handler.usuario.exception.UsuarioNaoEncontradoException;
@@ -52,6 +53,8 @@ public class UsuarioService {
 
         usuario.setSenha(passwordEncoder.encode(request.senha()));
 
+        usuario.setRole(Role.USER);
+
         Usuario salvo = usuarioRepository.save(usuario);
 
         return usuarioMapper.toResponse(salvo);
@@ -97,7 +100,6 @@ public class UsuarioService {
 
         usuario.setNome(request.nome());
         usuario.setEmail(request.email());
-        usuario.setRole(request.role());
 
         Usuario atualizado = usuarioRepository.save(usuario);
 

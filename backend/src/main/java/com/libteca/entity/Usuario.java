@@ -1,46 +1,43 @@
 package com.libteca.entity;
 
-import com.libteca.enums.Role;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-
+import com.libteca.enums.Role;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
 @Entity
-public class Usuario{
+@Table(name = "usuario")
+public class Usuario {
 
-    //Id
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "idusuario")
     private Long id;
 
-    //nome
     @NotBlank(message = "O nome é obrigatório")
-    @Column(nullable = false)
+    @Size(max = 70)
+    @Column(name = "nome_usuario", nullable = false, length = 70)
     private String nome;
 
-    //email
     @NotBlank(message = "O email é obrigatório")
     @Email(message = "O email deve ser válido")
-    @Column(nullable = false, unique = true)
+    @Size(max = 100)
+    @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
-    //senha
     @NotBlank(message = "A senha é obrigatória")
-    @Size(min = 6, message = "A senha deve ter no mínimo 6 caracteres")
-    @Column(nullable = false)
+    @Column(name = "senha", nullable = false, length = 255)
     private String senha;
 
-    //Tipo de usuário(role)
-    @NotNull(message = "A role é obrigatória")
+    @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "perfil_acesso", nullable = false, length = 11)
     private Role role;
 
 }

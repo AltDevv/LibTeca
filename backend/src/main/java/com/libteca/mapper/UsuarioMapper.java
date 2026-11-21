@@ -14,7 +14,6 @@ public class UsuarioMapper {
 
         usuario.setNome(request.nome());
         usuario.setEmail(request.email());
-        usuario.setSenha(request.senha());
 
         return usuario;
     }
@@ -24,7 +23,8 @@ public class UsuarioMapper {
         return new UsuarioResponse(
                 usuario.getId(),
                 usuario.getNome(),
-                usuario.getEmail()
+                usuario.getEmail(),
+                usuario.getRole()
         );
 
     }
