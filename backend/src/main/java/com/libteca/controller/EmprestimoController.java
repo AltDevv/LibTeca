@@ -34,13 +34,23 @@ public class EmprestimoController {
     }
 
     @PostMapping
-    public EmprestimoResponse adicionarEmprestimo(@Valid @RequestBody EmprestimoRequest request) {
-        return emprestimoService.adicionarEmprestimo(new EmprestimoRequest(request.exemplarId(), request.usuarioId(), acesso.funcionarioAtual(), request.dataPrevistaDevolucao()));
+    public EmprestimoResponse adicionarEmprestimo(@Valid @RequestBody com.libteca.dto.emprestimo.NovoEmprestimoRequest request) {
+        return emprestimoService.adicionarEmprestimo(new EmprestimoRequest(request.exemplarId(), request.usuarioId(), acesso.funcionarioAtual(), request.prazo().calcular(java.time.LocalDate.now()), request.prazo()));
     }
 
     @PatchMapping("/{id}/devolver")
     public EmprestimoResponse devolverEmprestimo(@PathVariable Long id) {
         return emprestimoService.devolverEmprestimo(id);
+    }
+
+    @PatchMapping("/{id}/cancelar")
+    public EmprestimoResponse cancelarSolicitacao(@PathVariable Long id) {
+        return emprestimoService.cancelarSolicitacao(id);
+    }
+
+    @PatchMapping("/{id}/entregar")
+    public EmprestimoResponse confirmarEntrega(@PathVariable Long id) {
+        return emprestimoService.confirmarRecebimento(id, acesso.funcionarioAtual());
     }
 
     @DeleteMapping("/{id}")

@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -70,9 +72,8 @@ public class ExemplarService {
     private Exemplar montarExemplar(ExemplarRequest request, Long id) {
         Livro livro = livroRepository.findById(request.livroId())
                 .orElseThrow(() -> new LivroNaoEncontradoException("Livro não encontrado"));
-        if (request.tipo() == TypeLivro.VIRTUAL && (request.caminhoArquivo() == null || request.caminhoArquivo().isBlank())) {
-            throw new IllegalArgumentException("O exemplar virtual precisa de um caminho de arquivo");
-        }
+        if (request.tipo() == TypeLivro.VIRTUAL && request.codigoPatrimonio() != null && !request.codigoPatrimonio().isBlank())
+            throw new IllegalArgumentException("O código de patrimônio pertence ao exemplar físico");
         if (request.tipo() == TypeLivro.FISICO && (request.codigoPatrimonio() == null || request.codigoPatrimonio().isBlank())) {
             throw new IllegalArgumentException("O exemplar físico precisa de um código de patrimônio");
         }
@@ -82,6 +83,8 @@ public class ExemplarService {
         Exemplar exemplar = exemplarMapper.toEntity(request, livro);
         if (exemplar.getCodigoPatrimonio() != null && exemplar.getCodigoPatrimonio().isBlank()) exemplar.setCodigoPatrimonio(null);
         if (exemplar.getCaminhoArquivo() != null && exemplar.getCaminhoArquivo().isBlank()) exemplar.setCaminhoArquivo(null);
+        if (exemplar.getTipo() == TypeLivro.VIRTUAL && exemplar.getCaminhoArquivo() == null)
+            exemplar.setStatus(StatusExemplar.INDISPONIVEL);
         if (exemplar.getCodigoPatrimonio() != null && (id == null ? exemplarRepository.existsByCodigoPatrimonio(exemplar.getCodigoPatrimonio())
                 : exemplarRepository.existsByCodigoPatrimonioAndIdNot(exemplar.getCodigoPatrimonio(), id))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Código de patrimônio já cadastrado");
@@ -90,11 +93,38 @@ public class ExemplarService {
     }
 
     public ExemplarResponse adicionarExemplar(ExemplarRequest request) {
+        if (request.tipo() == TypeLivro.VIRTUAL) {
+            livroRepository.bloquearCadastro(request.livroId());
+            if (exemplarRepository.buscarPorLivroParaAtualizar(request.livroId()).stream().anyMatch(e -> e.getTipo() == TypeLivro.VIRTUAL))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Este livro já possui um exemplar virtual. Edite o existente");
+        }
         return exemplarMapper.toResponse(exemplarRepository.save(montarExemplar(request, null)));
     }
 
+    // Um único exemplar virtual atende a todos os leitores simultaneamente.
+    public List<ExemplarResponse> adicionarVirtuais(ExemplarRequest request) {
+        if (request.tipo() != TypeLivro.VIRTUAL) throw new IllegalArgumentException("Informe o formato digital");
+        List<ExemplarResponse> resultado = new ArrayList<>();
+        resultado.add(adicionarExemplar(request));
+        return resultado;
+    }
+
+    public Exemplar bloquearVirtualDisponivel(Long id) {
+        Exemplar referencia = buscarExemplar(id);
+        if (referencia.getTipo() != TypeLivro.VIRTUAL)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Retire o exemplar físico com um funcionário");
+        Exemplar exemplar = bloquear(id);
+        recarregar(exemplar);
+        if (exemplar.getStatus() == StatusExemplar.INDISPONIVEL || exemplar.getCaminhoArquivo() == null || exemplar.getCaminhoArquivo().isBlank())
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "O arquivo digital ainda não está disponível");
+        return exemplar;
+    }
     public ExemplarResponse atualizarExemplar(Long id, ExemplarRequest request) {
         Exemplar exemplar = bloquear(id);
+        if (request.tipo() == TypeLivro.VIRTUAL && (!exemplar.getLivro().getId().equals(request.livroId()) || exemplar.getTipo() != TypeLivro.VIRTUAL))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cadastre o virtual separadamente, sem transformar outro exemplar");
+        if (!emprestimos.buscarEmAndamentoPorExemplar(id).isEmpty())
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Conclua os empréstimos antes de editar este exemplar");
         if (exemplar.getStatus() == StatusExemplar.EMPRESTADO || exemplar.getStatus() == StatusExemplar.RESERVADO) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Conclua o empréstimo ou a reserva antes de editar este exemplar.");
         }
@@ -103,9 +133,14 @@ public class ExemplarService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "O livro e o formato não podem ser alterados em um exemplar com histórico.");
         }
         Exemplar dados = montarExemplar(request, id);
+        boolean aguardavaArquivo = exemplar.getTipo() == TypeLivro.VIRTUAL && exemplar.getCaminhoArquivo() == null;
         exemplar.setLivro(dados.getLivro()); exemplar.setTipo(dados.getTipo());
         exemplar.setDataAquisicao(dados.getDataAquisicao()); exemplar.setCodigoPatrimonio(dados.getCodigoPatrimonio());
         exemplar.setCaminhoArquivo(dados.getCaminhoArquivo());
+        if (exemplar.getTipo() == TypeLivro.VIRTUAL && exemplar.getCaminhoArquivo() == null)
+            exemplar.setStatus(StatusExemplar.INDISPONIVEL);
+        else if (aguardavaArquivo && exemplar.getStatus() == StatusExemplar.INDISPONIVEL)
+            exemplar.setStatus(StatusExemplar.DISPONIVEL);
         return exemplarMapper.toResponse(exemplarRepository.save(exemplar));
     }
 

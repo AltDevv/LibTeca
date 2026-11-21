@@ -11,5 +11,11 @@ public record LivroRequest(
         @Positive Long funcionarioId,
         @Size(max = 255) String capa,
         @NotNull @Min(1) Integer numeroDePaginas,
-        @NotNull LocalDate dataLancamento
-) {}
+        @NotNull LocalDate dataLancamento,
+        @Min(0) Integer limiteReservas
+) {
+    public LivroRequest(String titulo, Set<Long> autoresIds, Set<Long> categoriasIds, Long editoraId,
+                        Long funcionarioId, String capa, Integer numeroDePaginas, LocalDate dataLancamento) {
+        this(titulo, autoresIds, categoriasIds, editoraId, funcionarioId, capa, numeroDePaginas, dataLancamento, null);
+    }
+}

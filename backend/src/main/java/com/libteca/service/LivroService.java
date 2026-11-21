@@ -64,6 +64,7 @@ public class LivroService {
     }
 
     public LivroResponse adicionarLivro(LivroRequest request) {
+        bibliotecaRepository.bloquear();
         Livro salvo = livroRepository.save(montarLivro(request, funcionarioService.buscarAtivo(request.funcionarioId())));
         bibliotecaRepository.iniciarAcervo();
         return livroMapper.toResponse(salvo);
@@ -76,6 +77,7 @@ public class LivroService {
         livro.setTitulo(dados.getTitulo()); livro.setCapa(dados.getCapa());
         livro.setNumeroDePaginas(dados.getNumeroDePaginas()); livro.setDataLancamento(dados.getDataLancamento());
         livro.setEditora(dados.getEditora());
+        if (request.limiteReservas() != null) livro.setLimiteReservas(dados.getLimiteReservas());
         livro.getAutores().clear(); livro.getAutores().addAll(dados.getAutores());
         livro.getCategorias().clear(); livro.getCategorias().addAll(dados.getCategorias());
         return livroMapper.toResponse(livroRepository.save(livro));

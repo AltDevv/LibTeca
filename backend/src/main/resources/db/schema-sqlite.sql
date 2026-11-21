@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS "emprestimo" (
     "status_emprestimo" VARCHAR(9) NOT NULL,
     "data_emprestimo" DATE NOT NULL,
     "data_expiracao" DATE NOT NULL,
+    "prazo_escolhido" VARCHAR(12) NULL,
     "data_devolucao" DATE,
     FOREIGN KEY ("idusuario") REFERENCES "usuario" ("idusuario") ON DELETE RESTRICT ON UPDATE RESTRICT,
     FOREIGN KEY ("idexemplar") REFERENCES "exemplar" ("idexemplar") ON DELETE NO ACTION ON UPDATE NO ACTION,

@@ -29,11 +29,14 @@ public class ReservaService {
     private final FuncionarioService funcionarioService;
     private final ReservaLancamentoService reservaLancamentoService;
     private final EmprestimoService emprestimoService;
+    private final LivroRepository livros;
+    private final ExemplarRepository exemplares;
 
     public ReservaService(ReservaRepository reservaRepository, UsuarioRepository usuarioRepository,
                           ReservaMapper reservaMapper, ExemplarService exemplarService,
                           FuncionarioService funcionarioService, ReservaLancamentoService reservaLancamentoService,
-                          EmprestimoService emprestimoService) {
+                          EmprestimoService emprestimoService, LivroRepository livros, ExemplarRepository exemplares) {
+        this.livros = livros; this.exemplares = exemplares;
         this.reservaRepository = reservaRepository;
         this.usuarioRepository = usuarioRepository;
         this.reservaMapper = reservaMapper;
@@ -57,16 +60,33 @@ public class ReservaService {
     }
 
     public ReservaResponse adicionarReserva(ReservaRequest request) {
+        // Serializa a verificação do limite entre todos os exemplares do mesmo livro.
+        Long livroId = exemplares.buscarLivroId(request.exemplarId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Exemplar não encontrado"));
+        livros.bloquearReservas(livroId);
         Exemplar exemplar = exemplarService.bloquear(request.exemplarId());
+        exemplarService.recarregar(exemplar);
+        Livro livro = exemplar.getLivro();
+        if (!livro.getId().equals(livroId))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "O exemplar foi alterado. Atualize a página");
+        exemplarService.recarregar(livro);
+        if (livro.getLimiteReservas() == 0)
+            throw new LivroIndisponivelException("Este livro não permite reservas");
+        var copias = exemplares.buscarPorLivroParaAtualizar(livro.getId());
+        var fila = reservaRepository.findByExemplarLivroIdAndStatusIn(livro.getId(), ReservaLancamentoService.EM_ANDAMENTO);
+        if (fila.size() >= livro.getLimiteReservas())
+            throw new LivroIndisponivelException("O limite de reservas deste livro foi atingido");
+        if (!livro.getDataLancamento().isAfter(java.time.LocalDate.now()) && copias.stream()
+                .anyMatch(e -> e.getTipo() == exemplar.getTipo() && e.getStatus() == StatusExemplar.DISPONIVEL))
+            throw new LivroIndisponivelException("Há exemplar disponível neste formato. Solicite o empréstimo");
         Usuario usuario = usuarioRepository.findById(request.usuarioId())
                 .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
         Funcionario funcionario = funcionarioService.buscarAtivo(request.funcionarioId());
         if (exemplar.getStatus() == StatusExemplar.INDISPONIVEL) {
             throw new LivroIndisponivelException("Este exemplar está indisponível");
         }
-        if (!reservaRepository.findByExemplarIdAndStatusInOrderByDataReservaAscIdAsc(
-                exemplar.getId(), ReservaLancamentoService.EM_ANDAMENTO).isEmpty()) {
-            throw new JaPossuiReservaException("Este exemplar já possui uma reserva em andamento");
+        if (fila.stream().anyMatch(r -> r.getUsuario().getId().equals(usuario.getId()))) {
+            throw new JaPossuiReservaException("Você já possui uma reserva em andamento para este livro");
         }
         Reserva reserva = reservaMapper.toEntity(exemplar, usuario, funcionario);
         reservaRepository.saveAndFlush(reserva);
@@ -95,7 +115,7 @@ public class ReservaService {
         Reserva reserva = buscarReserva(id);
         return emprestimoService.retirarReserva(new EmprestimoRequest(
                 reserva.getExemplar().getId(), reserva.getUsuario().getId(),
-                request.funcionarioId(), request.dataPrevistaDevolucao()), id);
+                request.funcionarioId(), request.dataPrevistaDevolucao(), request.prazo()), id);
     }
 
     public void apagarReserva(Long id) {

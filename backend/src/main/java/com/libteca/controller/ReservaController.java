@@ -46,8 +46,8 @@ public class ReservaController {
     @PatchMapping("/{id}/retirar")
     public EmprestimoResponse retirarReserva(
             @PathVariable Long id,
-            @Valid @RequestBody RetiradaReservaRequest request) {
-        return reservaService.retirarReserva(id, new RetiradaReservaRequest(request.dataPrevistaDevolucao(), acesso.funcionarioAtual()));
+            @Valid @RequestBody com.libteca.dto.emprestimo.PrazoRequest request) {
+        return reservaService.retirarReserva(id, new RetiradaReservaRequest(request.prazo().calcular(java.time.LocalDate.now()), acesso.funcionarioAtual(), request.prazo()));
     }
 
     @DeleteMapping("/{id}")

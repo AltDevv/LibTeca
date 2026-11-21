@@ -37,7 +37,7 @@ public class LivroController {
 
     @PostMapping
     public LivroResponse adicionarLivro(@Valid @RequestBody LivroRequest request) {
-        return livroService.adicionarLivro(new LivroRequest(request.titulo(), request.autoresIds(), request.categoriasIds(), request.editoraId(), acesso.funcionarioAtual(), request.capa(), request.numeroDePaginas(), request.dataLancamento()));
+        return livroService.adicionarLivro(new LivroRequest(request.titulo(), request.autoresIds(), request.categoriasIds(), request.editoraId(), acesso.funcionarioAtual(), request.capa(), request.numeroDePaginas(), request.dataLancamento(), request.limiteReservas()));
     }
 
     @PutMapping("/{id}")

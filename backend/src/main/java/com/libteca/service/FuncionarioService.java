@@ -19,12 +19,14 @@ public class FuncionarioService {
     private final FuncionarioRepository funcionarioRepository;
     private final UsuarioRepository usuarioRepository;
     private final FuncionarioMapper funcionarioMapper;
+    private final BibliotecaRepository bibliotecaRepository;
 
     public FuncionarioService(FuncionarioRepository funcionarioRepository, UsuarioRepository usuarioRepository,
-                              FuncionarioMapper funcionarioMapper) {
+                              FuncionarioMapper funcionarioMapper, BibliotecaRepository bibliotecaRepository) {
         this.funcionarioRepository = funcionarioRepository;
         this.usuarioRepository = usuarioRepository;
         this.funcionarioMapper = funcionarioMapper;
+        this.bibliotecaRepository = bibliotecaRepository;
     }
 
     public List<FuncionarioResponse> listarTodos() {
@@ -50,6 +52,7 @@ public class FuncionarioService {
     }
 
     public FuncionarioResponse adicionarFuncionario(FuncionarioRequest request) {
+        bibliotecaRepository.bloquear();
         Usuario usuario = usuarioRepository.findById(request.usuarioId())
                 .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
         if (funcionarioRepository.existsByUsuarioId(usuario.getId())) {
@@ -65,6 +68,8 @@ public class FuncionarioService {
         if (!funcionario.getUsuario().getId().equals(request.usuarioId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Não é permitido trocar o usuário do funcionário");
         }
+        if (!request.ativo() && administrador(funcionario))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Transfira a administração antes de desativar esta conta");
         funcionario.setDataAdmissao(request.dataAdmissao());
         funcionario.setAtivo(request.ativo());
         return funcionarioMapper.toResponse(funcionario);
@@ -72,12 +77,19 @@ public class FuncionarioService {
 
     public void apagarFuncionario(Long id) {
         Funcionario funcionario = buscarFuncionario(id);
+        if (administrador(funcionario))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Administradores não podem ser excluídos. Use Minha biblioteca");
         if (funcionario.getUsuario().getRole() == Role.FUNCIONARIO) funcionario.getUsuario().setRole(Role.USER);
         funcionarioRepository.delete(funcionario);
         funcionarioRepository.flush();
     }
 
     public void apagarTodos() {
+        if (funcionarioRepository.findAll().stream().anyMatch(this::administrador))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Administradores não podem ser excluídos. Use Minha biblioteca");
         for (Funcionario funcionario : funcionarioRepository.findAll()) apagarFuncionario(funcionario.getId());
+    }
+    private boolean administrador(Funcionario f) {
+        return f.getUsuario().getRole()==Role.ADMIN || f.getUsuario().getRole()==Role.ADMIM;
     }
 }

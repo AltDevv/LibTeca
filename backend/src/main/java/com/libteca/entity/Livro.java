@@ -60,4 +60,10 @@ public class Livro {
     @Column(name = "data_lancamento", nullable = false)
     private LocalDate dataLancamento;
 
+    // Zero desativa novas reservas; reservas já feitas são preservadas.
+    @NotNull
+    @Min(0)
+    @Column(name = "limite_reservas", nullable = false)
+    private Integer limiteReservas = 3;
+
 }

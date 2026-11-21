@@ -5,7 +5,6 @@ import com.libteca.dto.biblioteca.*;
 import com.libteca.repository.*;
 import com.libteca.enums.Role;
 import com.libteca.config.InstalacaoConfig;
-import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +21,10 @@ public class BibliotecaService {
     private final FuncionarioRepository funcionarios;
     private final PasswordEncoder encoder;
     private final InstalacaoConfig instalacao;
-    private final EntityManager entityManager;
     public BibliotecaService(BibliotecaRepository bibliotecas, UsuarioRepository usuarios,
-            FuncionarioRepository funcionarios, PasswordEncoder encoder, InstalacaoConfig instalacao, EntityManager entityManager) {
+            FuncionarioRepository funcionarios, PasswordEncoder encoder, InstalacaoConfig instalacao) {
         this.bibliotecas=bibliotecas;this.usuarios=usuarios;this.funcionarios=funcionarios;
-        this.encoder=encoder;this.instalacao=instalacao;this.entityManager=entityManager;
+        this.encoder=encoder;this.instalacao=instalacao;
     }
     public boolean possuiAdministrador() {
         return usuarios.existsByRoleIn(List.of(Role.ADMIN,Role.ADMIM));
@@ -42,7 +40,6 @@ public class BibliotecaService {
     private Biblioteca bloquear() {
         bibliotecas.bloquear();
         Biblioteca b=bibliotecas.findById(1L).orElseThrow();
-        entityManager.refresh(b,jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
         return b;
     }
     @Transactional

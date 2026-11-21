@@ -12,5 +12,7 @@ public record ExemplarResponse(
         TypeLivro tipo,
         LocalDate dataAquisicao,
         String caminhoArquivo,
-        String codigoPatrimonio
+        String codigoPatrimonio,
+        long emprestimosAtivos,
+        long totalEmprestimos
 ) {}

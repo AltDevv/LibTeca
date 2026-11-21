@@ -36,6 +36,11 @@ public class ExemplarController {
         return exemplarService.atualizarExemplar(id, request);
     }
 
+    @PostMapping("/virtuais")
+    public List<ExemplarResponse> adicionarVirtuais(@Valid @RequestBody ExemplarRequest request) {
+        return exemplarService.adicionarVirtuais(request);
+    }
+
     @DeleteMapping("/{id}")
     public void apagarExemplar(@PathVariable Long id) {
         exemplarService.apagarExemplar(id);

@@ -30,6 +30,6 @@ public class EmprestimoMapper {
         return new EmprestimoResponse(emprestimo.getId(), exemplarMapper.toResponse(emprestimo.getExemplar()),
                 usuarioMapper.toResponse(emprestimo.getUsuario()),
                 emprestimo.getFuncionario() == null ? null : emprestimo.getFuncionario().getId(),
-                emprestimo.getDataEmprestimo(), emprestimo.getDataExpiracao(), emprestimo.getDataDevolucao(), emprestimo.getStatus());
+                emprestimo.getDataEmprestimo(), emprestimo.getDataExpiracao(), emprestimo.getDataDevolucao(), emprestimo.getStatus(), emprestimo.getPrazo());
     }
 }

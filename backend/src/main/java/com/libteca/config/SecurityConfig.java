@@ -36,9 +36,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/biblioteca").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/instalacao").permitAll()
                 .requestMatchers(HttpMethod.PUT, "/api/biblioteca").access((a,c) -> new AuthorizationDecision(acesso.administrador(a.get())))
+                .requestMatchers("/api/biblioteca/transferir").access((a,c) -> new AuthorizationDecision(acesso.administrador(a.get())))
+                .requestMatchers(HttpMethod.DELETE, "/api/biblioteca").access((a,c) -> new AuthorizationDecision(acesso.administrador(a.get())))
                 .requestMatchers(HttpMethod.GET, "/api/livros/**", "/api/autores", "/api/categorias", "/api/editoras",
                         "/api/catalogo/**", "/capas/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/funcionarios/**").access((a,c) -> new AuthorizationDecision(acesso.gestao(a.get())))
                 .requestMatchers("/api/funcionarios/**").access((a,c) -> new AuthorizationDecision(acesso.administrador(a.get())))
+                .requestMatchers("/api/solicitacoes-funcionarios/**").denyAll()
                 .requestMatchers("/api/auth/**", "/api/minha-conta/**", "/api/arquivos/leitura/**").authenticated()
                 .requestMatchers("/api/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
                     .access((a,c) -> new AuthorizationDecision(acesso.gestao(a.get())))

@@ -7,5 +7,10 @@ public record EmprestimoRequest(
         @NotNull @Positive Long usuarioId,
         @Positive Long funcionarioId,
         @NotNull(message = "A data prevista de devolução é obrigatória")
-        @FutureOrPresent LocalDate dataPrevistaDevolucao
-) {}
+        @FutureOrPresent LocalDate dataPrevistaDevolucao,
+        com.libteca.enums.PrazoEmprestimo prazo
+) {
+    public EmprestimoRequest(Long exemplarId, Long usuarioId, Long funcionarioId, LocalDate dataPrevistaDevolucao) {
+        this(exemplarId, usuarioId, funcionarioId, dataPrevistaDevolucao, null);
+    }
+}

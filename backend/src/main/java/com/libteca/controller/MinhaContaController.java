@@ -27,10 +27,12 @@ public class MinhaContaController {
     @GetMapping("/emprestimos") public List<EmprestimoResponse> emprestimos(){ return conta.emprestimos(); }
     @GetMapping("/reservas") public List<ReservaResponse> reservas(){ return conta.reservas(); }
     @PostMapping("/reservas/{exemplarId}") public ReservaResponse reservar(@PathVariable Long exemplarId){ return conta.reservar(exemplarId); }
-    @PostMapping("/emprestimos/{exemplarId}") public EmprestimoResponse emprestar(@PathVariable Long exemplarId){ return conta.emprestar(exemplarId); }
+    @PostMapping("/emprestimos/{exemplarId}") public EmprestimoResponse emprestar(@PathVariable Long exemplarId, @Valid @RequestBody com.libteca.dto.emprestimo.PrazoRequest request){ return conta.emprestar(exemplarId,request.prazo()); }
     @PatchMapping("/emprestimos/{id}/devolver") public EmprestimoResponse devolver(@PathVariable Long id){ return conta.devolver(id); }
+    @PatchMapping("/emprestimos/{id}/receber") public EmprestimoResponse receber(@PathVariable Long id){ return conta.confirmarRecebimento(id); }
+    @PatchMapping("/emprestimos/{id}/cancelar") public EmprestimoResponse cancelarEmprestimo(@PathVariable Long id){ return conta.cancelarEmprestimo(id); }
     @PatchMapping("/reservas/{id}/cancelar") public ReservaResponse cancelar(@PathVariable Long id){ return conta.cancelar(id); }
-    @PatchMapping("/reservas/{id}/retirar") public EmprestimoResponse retirar(@PathVariable Long id){ return conta.retirar(id); }
+    @PatchMapping("/reservas/{id}/retirar") public EmprestimoResponse retirar(@PathVariable Long id, @Valid @RequestBody com.libteca.dto.emprestimo.PrazoRequest request){ return conta.retirar(id,request.prazo()); }
     @PatchMapping("/senha") public void senha(@Valid @RequestBody SenhaRequest request){ usuarios.alterarSenha(acesso.atual().getId(),request); }
     @GetMapping("/telefones") public List<TelefoneResponse> telefones(){ return telefones.buscarPorUsuario(acesso.atual().getId()); }
     @PostMapping("/telefones") public TelefoneResponse telefone(@Valid @RequestBody TelefoneRequest request){

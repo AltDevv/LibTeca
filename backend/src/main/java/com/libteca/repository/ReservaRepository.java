@@ -12,6 +12,9 @@ import java.util.Optional;
 
 public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     boolean existsByExemplarId(Long exemplarId);
+    long countByExemplarLivroIdAndStatusIn(Long livroId, List<StatusReserva> status);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<Reserva> findByExemplarLivroIdAndStatusIn(Long livroId, List<StatusReserva> status);
 
     java.util.List<Reserva> findByUsuarioIdOrderByIdDesc(Long usuarioId);
 

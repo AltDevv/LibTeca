@@ -29,8 +29,18 @@ public class ReservaLancamentoService {
 
     // O chamador já bloqueou o exemplar na transação.
     public void atualizarDisponibilidade(Exemplar exemplar) {
-        if (!emprestimoRepository.findByExemplarIdAndDataDevolucaoIsNull(exemplar.getId()).isEmpty()) {
-            exemplar.setStatus(StatusExemplar.EMPRESTADO);
+        if (exemplar.getTipo() == TypeLivro.VIRTUAL) {
+            exemplar.setStatus(exemplar.getCaminhoArquivo() == null || exemplar.getCaminhoArquivo().isBlank()
+                    ? StatusExemplar.INDISPONIVEL : StatusExemplar.DISPONIVEL);
+            if (!exemplar.getLivro().getDataLancamento().isAfter(LocalDate.now()))
+                for (Reserva reserva : reservaRepository.findByExemplarIdAndStatusInOrderByDataReservaAscIdAsc(exemplar.getId(), EM_ANDAMENTO))
+                    reserva.setStatus(StatusReserva.DISPONIVEL_PARA_RETIRADA);
+            return;
+        }
+        List<Emprestimo> emprestimos = emprestimoRepository.buscarEmAndamentoPorExemplar(exemplar.getId());
+        if (!emprestimos.isEmpty()) {
+            exemplar.setStatus(emprestimos.get(0).getStatus() == StatusEmprestimo.PENDENTE
+                    ? StatusExemplar.RESERVADO : StatusExemplar.EMPRESTADO);
             return;
         }
         List<Reserva> reservas = reservaRepository.findByExemplarIdAndStatusInOrderByDataReservaAscIdAsc(

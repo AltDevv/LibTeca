@@ -8,8 +8,10 @@ import org.springframework.stereotype.Component;
 public class ExemplarMapper {
 
     private final LivroMapper livroMapper;
+    private final com.libteca.repository.EmprestimoRepository emprestimos;
 
-    public ExemplarMapper(LivroMapper livroMapper) {
+    public ExemplarMapper(LivroMapper livroMapper, com.libteca.repository.EmprestimoRepository emprestimos) {
+        this.emprestimos = emprestimos;
         this.livroMapper = livroMapper;
     }
 
@@ -26,6 +28,8 @@ public class ExemplarMapper {
     public ExemplarResponse toResponse(Exemplar exemplar) {
         return new ExemplarResponse(exemplar.getId(), livroMapper.toResponse(exemplar.getLivro()),
                 exemplar.getStatus(), exemplar.getTipo(), exemplar.getDataAquisicao(),
-                exemplar.getCaminhoArquivo(), exemplar.getCodigoPatrimonio());
+                exemplar.getCaminhoArquivo(), exemplar.getCodigoPatrimonio(),
+                emprestimos.countByExemplarIdAndStatusAndDataDevolucaoIsNullAndDataExpiracaoGreaterThanEqual(exemplar.getId(), com.libteca.enums.StatusEmprestimo.ATIVO, java.time.LocalDate.now()),
+                emprestimos.countByExemplarIdAndStatusNot(exemplar.getId(), com.libteca.enums.StatusEmprestimo.CANCELADO));
     }
 }

@@ -41,10 +41,21 @@ public class MinhaContaService {
     public ReservaResponse reservar(Long exemplarId) {
         return reservaService.adicionarReserva(new ReservaRequest(exemplarId, acesso.atual().getId(), null));
     }
-    public EmprestimoResponse emprestar(Long exemplarId) {
+    public EmprestimoResponse emprestar(Long exemplarId, com.libteca.enums.PrazoEmprestimo prazo) {
         var exemplar=exemplares.findById(exemplarId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        if (exemplar.getTipo()!=TypeLivro.VIRTUAL) throw new ResponseStatusException(HttpStatus.CONFLICT,"Retire o exemplar físico com um funcionário");
-        return emprestimoService.adicionarEmprestimo(new EmprestimoRequest(exemplarId,acesso.atual().getId(),null,LocalDate.now().plusDays(14)));
+        var pedido=new EmprestimoRequest(exemplarId,acesso.atual().getId(),null,prazo.calcular(LocalDate.now()),prazo);
+        return exemplar.getTipo()==TypeLivro.VIRTUAL?emprestimoService.adicionarEmprestimoDigital(pedido)
+                :emprestimoService.solicitarEmprestimoFisico(pedido);
+    }
+    public EmprestimoResponse confirmarRecebimento(Long id) {
+        var emprestimo=emprestimos.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        acesso.dono(emprestimo.getUsuario().getId());
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "A entrega deve ser confirmada por um funcionário ou administrador");
+    }
+    public EmprestimoResponse cancelarEmprestimo(Long id) {
+        var emprestimo=emprestimos.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        acesso.dono(emprestimo.getUsuario().getId());
+        return emprestimoService.cancelarSolicitacao(id);
     }
     public EmprestimoResponse devolver(Long id) {
         var emprestimo=emprestimos.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
@@ -57,10 +68,11 @@ public class MinhaContaService {
         acesso.dono(reserva.getUsuario().getId());
         return reservaService.cancelarReserva(id);
     }
-    public EmprestimoResponse retirar(Long id) {
+    public EmprestimoResponse retirar(Long id, com.libteca.enums.PrazoEmprestimo prazo) {
         var reserva=reservas.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         acesso.dono(reserva.getUsuario().getId());
-        if(reserva.getExemplar().getTipo()!=TypeLivro.VIRTUAL) throw new ResponseStatusException(HttpStatus.CONFLICT,"Retire o exemplar físico com um funcionário");
-        return reservaService.retirarReserva(id,new RetiradaReservaRequest(LocalDate.now().plusDays(14),null));
+        if (reserva.getExemplar().getTipo() == TypeLivro.FISICO)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "A entrega deve ser confirmada por um funcionário ou administrador");
+        return reservaService.retirarReserva(id,new RetiradaReservaRequest(prazo.calcular(LocalDate.now()),null,prazo));
     }
 }

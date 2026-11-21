@@ -62,27 +62,48 @@ public class EmprestimoService {
         return registrarEmprestimo(request, null);
     }
 
+    public EmprestimoResponse solicitarEmprestimoFisico(EmprestimoRequest request) {
+        return registrarEmprestimo(request, null, true);
+    }
+
+    public EmprestimoResponse adicionarEmprestimoDigital(EmprestimoRequest request) {
+        Exemplar exemplar = exemplarService.bloquearVirtualDisponivel(request.exemplarId());
+        return registrarEmprestimo(new EmprestimoRequest(exemplar.getId(), request.usuarioId(),
+                request.funcionarioId(), request.dataPrevistaDevolucao(), request.prazo()), null);
+    }
+
     public EmprestimoResponse retirarReserva(EmprestimoRequest request, Long reservaId) {
         return registrarEmprestimo(request, reservaId);
     }
 
     private EmprestimoResponse registrarEmprestimo(EmprestimoRequest request, Long reservaId) {
+        return registrarEmprestimo(request, reservaId, false);
+    }
+
+    private EmprestimoResponse registrarEmprestimo(EmprestimoRequest request, Long reservaId, boolean aguardarRecebimento) {
         validarPrazo(request.dataPrevistaDevolucao());
         Exemplar exemplar = exemplarService.bloquear(request.exemplarId());
+        exemplarService.recarregar(exemplar);
+        boolean virtual = exemplar.getTipo() == TypeLivro.VIRTUAL;
+        if (aguardarRecebimento && exemplar.getTipo() != TypeLivro.FISICO)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Somente o exemplar físico aguarda recebimento");
         Usuario usuario = usuarioRepository.findById(request.usuarioId())
                 .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
         Funcionario funcionario = funcionarioService.buscarAtivo(request.funcionarioId());
+        if (!aguardarRecebimento && exemplar.getTipo() == TypeLivro.FISICO && funcionario == null)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Informe o responsável pela entrega do livro físico");
         if (exemplar.getLivro().getDataLancamento().isAfter(LocalDate.now())) {
             throw new LivroIndisponivelException("O livro ainda não foi lançado");
         }
         if (exemplar.getStatus() == StatusExemplar.INDISPONIVEL
-                || !emprestimoRepository.findByExemplarIdAndDataDevolucaoIsNull(exemplar.getId()).isEmpty()) {
+                || (exemplar.getTipo() == TypeLivro.VIRTUAL && (exemplar.getCaminhoArquivo() == null || exemplar.getCaminhoArquivo().isBlank()))
+                || (!virtual && !emprestimoRepository.buscarEmAndamentoPorExemplar(exemplar.getId()).isEmpty())) {
             throw new LivroIndisponivelException("Este exemplar não está disponível");
         }
         List<Reserva> reservas = reservaRepository.findByExemplarIdAndStatusInOrderByDataReservaAscIdAsc(
                 exemplar.getId(), ReservaLancamentoService.EM_ANDAMENTO);
         if (reservaId == null) {
-            if (!reservas.isEmpty() || exemplar.getStatus() != StatusExemplar.DISPONIVEL) {
+            if (!virtual && (!reservas.isEmpty() || exemplar.getStatus() != StatusExemplar.DISPONIVEL)) {
                 throw new LivroIndisponivelException("Este exemplar está reservado ou emprestado");
             }
         } else {
@@ -95,8 +116,53 @@ public class EmprestimoService {
             reserva.setStatus(StatusReserva.CONCLUIDA);
         }
         Emprestimo emprestimo = emprestimoMapper.toEntity(exemplar, usuario, funcionario, request.dataPrevistaDevolucao());
-        exemplar.setStatus(StatusExemplar.EMPRESTADO);
+        emprestimo.setPrazo(request.prazo());
+        if (virtual && emprestimoRepository.buscarEmAndamentoPorExemplar(exemplar.getId()).stream()
+                .anyMatch(e -> e.getUsuario().getId().equals(usuario.getId()) && e.getStatus() == StatusEmprestimo.ATIVO
+                        && !e.getDataExpiracao().isBefore(LocalDate.now())))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Você já possui uma leitura ativa deste livro");
+        if (aguardarRecebimento) emprestimo.setStatus(StatusEmprestimo.PENDENTE);
+        exemplar.setStatus(virtual ? StatusExemplar.DISPONIVEL : aguardarRecebimento ? StatusExemplar.RESERVADO : StatusExemplar.EMPRESTADO);
         return emprestimoMapper.toResponse(emprestimoRepository.save(emprestimo));
+    }
+
+    public EmprestimoResponse confirmarRecebimento(Long id, Long funcionarioId) {
+        Funcionario funcionario = funcionarioService.buscarAtivo(funcionarioId);
+        if (funcionario == null)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Informe o responsável pela entrega");
+        Exemplar exemplar = exemplarService.bloquear(buscarEmprestimo(id).getExemplar().getId());
+        Emprestimo emprestimo = emprestimoRepository.buscarParaAtualizar(id).orElseThrow();
+        exemplarService.recarregar(emprestimo);
+        validarRecebimentoPendente(emprestimo);
+        // Enquanto pendente, as datas são uma previsão. O período efetivo começa no recebimento.
+        // A condição na escrita também protege contra uma leitura anterior à transação concorrente.
+        LocalDate hoje = LocalDate.now();
+        if (emprestimoRepository.confirmarRecebimento(id, hoje, emprestimo.getPrazo() == null ? hoje.plusDays(14) : emprestimo.getPrazo().calcular(hoje)) != 1)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "O recebimento já foi confirmado ou cancelado");
+        exemplarService.recarregar(emprestimo);
+        emprestimo.setFuncionario(funcionario);
+        exemplar.setStatus(StatusExemplar.EMPRESTADO);
+        return emprestimoMapper.toResponse(emprestimo);
+    }
+
+    public EmprestimoResponse cancelarSolicitacao(Long id) {
+        Exemplar exemplar = exemplarService.bloquear(buscarEmprestimo(id).getExemplar().getId());
+        Emprestimo emprestimo = emprestimoRepository.buscarParaAtualizar(id).orElseThrow();
+        exemplarService.recarregar(emprestimo);
+        validarRecebimentoPendente(emprestimo);
+        if (emprestimoRepository.cancelarSolicitacao(id) != 1)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "O recebimento já foi confirmado ou cancelado");
+        exemplarService.recarregar(emprestimo);
+        // Cancelamento não registra uma devolução que não aconteceu.
+        emprestimoRepository.flush();
+        reservaLancamentoService.atualizarDisponibilidade(exemplar);
+        return emprestimoMapper.toResponse(emprestimo);
+    }
+
+    private void validarRecebimentoPendente(Emprestimo emprestimo) {
+        if (emprestimo.getStatus() != StatusEmprestimo.PENDENTE || emprestimo.getDataDevolucao() != null
+                || emprestimo.getExemplar().getTipo() != TypeLivro.FISICO)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este empréstimo não está aguardando recebimento");
     }
 
     private void validarPrazo(LocalDate prazo) {
@@ -114,6 +180,8 @@ public class EmprestimoService {
         if (emprestimo.getDataDevolucao() != null || emprestimo.getStatus() == StatusEmprestimo.DEVOLVIDO) {
             throw new EmprestimoJaDevolvidoException("Este empréstimo já foi devolvido");
         }
+        if (emprestimo.getStatus() != StatusEmprestimo.ATIVO && emprestimo.getStatus() != StatusEmprestimo.EXPIRADO)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Somente um empréstimo recebido pode ser devolvido");
         // Físicos e virtuais seguem a mesma regra de devolução.
         emprestimo.setDataDevolucao(LocalDate.now());
         emprestimo.setStatus(StatusEmprestimo.DEVOLVIDO);
@@ -137,7 +205,7 @@ public class EmprestimoService {
     public void apagarEmprestimo(Long id) {
         Emprestimo emprestimo = buscarEmprestimo(id);
         exemplarService.bloquear(emprestimo.getExemplar().getId());
-        if (emprestimo.getDataDevolucao() == null) {
+        if (emprestimo.getDataDevolucao() == null && emprestimo.getStatus() != StatusEmprestimo.CANCELADO) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Registre a devolução antes de excluir o empréstimo");
         }
         emprestimoRepository.delete(emprestimo);

@@ -13,5 +13,6 @@ public record EmprestimoResponse(
         LocalDate dataEmprestimo,
         LocalDate dataExpiracao,
         LocalDate dataDevolucao,
-        StatusEmprestimo status
+        StatusEmprestimo status,
+        com.libteca.enums.PrazoEmprestimo prazo
 ) {}

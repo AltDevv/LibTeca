@@ -22,11 +22,13 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final UsuarioMapper usuarioMapper;
     private final UsuarioRepository usuarioRepository;
+    private final AcessoService acesso;
 
-    public UsuarioService(PasswordEncoder passwordEncoder, UsuarioRepository usuarioRepository, UsuarioMapper usuarioMapper) {
+    public UsuarioService(PasswordEncoder passwordEncoder, UsuarioRepository usuarioRepository, UsuarioMapper usuarioMapper, AcessoService acesso) {
         this.passwordEncoder = passwordEncoder;
         this.usuarioRepository = usuarioRepository;
         this.usuarioMapper = usuarioMapper;
+        this.acesso = acesso;
     }
 
     // Todos
@@ -39,6 +41,9 @@ public class UsuarioService {
 
     // Todos
     public void apagarTodos() {
+        if (usuarioRepository.existsByRoleIn(java.util.List.of(Role.ADMIN, Role.ADMIM)))
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Administradores não podem ser excluídos. Use Minha biblioteca");
+        if (usuarioRepository.existsByRoleIn(java.util.List.of(Role.FUNCIONARIO))) exigirAdministrador();
         usuarioRepository.deleteAll();
     }
 
@@ -72,11 +77,18 @@ public class UsuarioService {
     // Apagar por ID
     public void apagarUsuario(Long id) {
 
-        if (!usuarioRepository.existsById(id)) {
-            throw new UsuarioNaoEncontradoException("Usuário não encontrado");
-        }
+        Usuario usuario=usuarioRepository.findById(id).orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+        if (usuario.getRole()==Role.ADMIN || usuario.getRole()==Role.ADMIM)
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Administradores não podem ser excluídos. Use Minha biblioteca");
+
+        if (usuario.getRole()==Role.FUNCIONARIO) exigirAdministrador();
 
         usuarioRepository.deleteById(id);
+    }
+
+    private void exigirAdministrador() {
+        if (!acesso.administrador(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()))
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Somente o administrador pode excluir funcionários");
     }
 
     public UsuarioResponse atualizarUsuario(

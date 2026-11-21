@@ -43,6 +43,11 @@ public class Emprestimo {
     @Column(name = "data_expiracao", nullable = false)
     private LocalDate dataExpiracao;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "prazo_escolhido", length = 12)
+    private com.libteca.enums.PrazoEmprestimo prazo;
+
     // Data efetiva; permanece nula enquanto o exemplar não for devolvido.
     @Column(name = "data_devolucao")
     private LocalDate dataDevolucao;

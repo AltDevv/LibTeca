@@ -15,5 +15,7 @@ public record LivroResponse(
         Long funcionarioId,
         String capa,
         Integer numeroDePaginas,
-        LocalDate dataLancamento
+        LocalDate dataLancamento,
+        Integer limiteReservas,
+        long reservasEmAndamento
 ) {}
