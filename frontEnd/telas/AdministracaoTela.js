@@ -1,0 +1,9 @@
+import { esc } from '../mapper/VisualMapper.js';
+export function administracaoTela(acao,nome,funcionarios=[]){
+    const apagar=acao==='apagar-sistema';
+    return '<div class="modal-header"><h2 id="modal-titulo">'+(apagar?'Apagar sistema':'Transferir administração')+'</h2><button class="icon-btn" data-acao="fechar-modal" aria-label="Fechar">×</button></div>'+
+        '<form id="form-administracao" data-operacao="'+(apagar?'apagar':'transferir')+'">'+
+        (apagar?'<p>Todos os cadastros, empréstimos, reservas, capas e PDFs desta biblioteca serão apagados. A configuração inicial será aberta novamente. Esta ação não pode ser desfeita pela interface. Backups locais existentes serão mantidos.</p><label>Para confirmar, digite '+esc(nome)+'<input name="nomeBiblioteca" required autocomplete="off"></label>':
+        '<p>O funcionário escolhido será o novo administrador. Sua conta continuará como funcionário, com o histórico preservado. Todos precisarão entrar novamente.</p><label>Novo administrador<select name="funcionarioId" data-numero required><option value="">Selecione um funcionário ativo</option>'+funcionarios.map(f=>'<option value="'+Number(f.id)+'">'+esc(f.usuario.nome)+' — '+esc(f.usuario.email)+'</option>').join('')+'</select></label>'+(funcionarios.length?'':'<p>Cadastre ou ative um funcionário na Equipe antes de transferir.</p>'))+
+        '<label>Sua senha atual<input type="password" name="senhaAtual" required autocomplete="current-password"></label><p class="form-error" role="alert"></p><div class="modal-footer"><button type="button" class="btn secundario" data-acao="fechar-modal">Cancelar</button><button type="submit" class="btn '+(apagar?'destrutivo':'')+'" '+(!apagar&&!funcionarios.length?'disabled':'')+'>'+(apagar?'Apagar todos os dados':'Confirmar transferência')+'</button></div></form>';
+}
