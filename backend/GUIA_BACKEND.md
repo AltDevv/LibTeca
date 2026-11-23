@@ -179,3 +179,7 @@ Administradores (ADMIN/ADMIM) não podem ser excluídos pelas rotas de usuários
 Somente o administrador pode cadastrar, alterar, desativar ou excluir funcionários. O cadastro direto promove USER a FUNCIONARIO; a exclusão do vínculo retorna essa conta a USER, desde que não existam relações que impeçam a exclusão. Funcionários também não podem excluir contas FUNCIONARIO pela rota de usuários. O perfil do usuário não é aceito no cadastro comum: novas contas começam como USER.
 
 O fluxo de solicitação/aprovação foi removido do frontend e da API; as rotas antigas são negadas explicitamente. O administrador gerencia a equipe diretamente. Os testes de autorização verificam as rotas de funcionários e usuários; `ConfiguracaoLocalTests` cobre migração, reinício, tabela já apagada, falha de gravação e rollback.
+
+## Telefone no cadastro
+
+POST `/api/auth/cadastro` e POST `/api/usuarios` exigem `nome`, `email`, `senha` e `telefone`. O telefone deve conter DDD e 10 ou 11 dígitos, sem pontuação. O backend grava usuário e telefone na mesma transação; número já cadastrado retorna conflito e desfaz o cadastro. A regra vale para leitores e para cadastros feitos por funcionário ou administrador, sem alterar a estrutura das tabelas.

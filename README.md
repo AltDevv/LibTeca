@@ -290,3 +290,5 @@ O Git ignora configurações locais, `data`, bancos, uploads, códigos de instal
 O frontend segue as pastas `config`, `controller`, `dto`, `entity`, `enums`, `filter`, `handler`, `mapper`, `repository`, `service` e `specification`, além de `telas`, `css` e `assets`. O Maven copia esses recursos para `backend/target/classes/static` e os inclui no JAR.
 
 Veja também [o guia do backend](backend/GUIA_BACKEND.md), [a documentação do frontend](frontEnd/README.md) e [o SQL de instalação MySQL](banco/schema-mysql.sql).
+
+O cadastro de leitores exige telefone com DDD (10 ou 11 dígitos, sem pontuação), tanto na criação da própria conta quanto na tela Usuários usada pela equipe. O telefone é salvo na tabela `telefone`, vinculado à conta.
