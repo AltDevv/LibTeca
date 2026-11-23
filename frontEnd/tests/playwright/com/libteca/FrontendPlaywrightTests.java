@@ -82,7 +82,7 @@ class FrontendPlaywrightTests {
 
     @Test @DisplayName("01 — Cadastro de leitor pelo formulário")
     void cadastroDeLeitor(){
-        abrir("cadastro");pagina.getByLabel("Seu nome").fill("Nova Leitora");pagina.getByLabel("Email",new Page.GetByLabelOptions().setExact(true)).fill("nova@teste.local");pagina.getByLabel("Senha",new Page.GetByLabelOptions().setExact(true)).fill("SenhaTeste123!");
+        abrir("cadastro");pagina.getByLabel("Telefone com DDD").fill("11900000001");pagina.getByLabel("Seu nome").fill("Nova Leitora");pagina.getByLabel("Email",new Page.GetByLabelOptions().setExact(true)).fill("nova@teste.local");pagina.getByLabel("Senha",new Page.GetByLabelOptions().setExact(true)).fill("SenhaTeste123!");
         botao("Criar minha conta").click();assertThat(pagina.locator(".nome-conta")).hasText("Nova Leitora");assertThat(pagina.locator("#conteudo h1")).hasText("Catálogo");
     }
     @Test @DisplayName("02 — Login recusa senha incorreta")
