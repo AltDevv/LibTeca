@@ -23,12 +23,21 @@ public class UsuarioService {
     private final UsuarioMapper usuarioMapper;
     private final UsuarioRepository usuarioRepository;
     private final AcessoService acesso;
+    private final TelefoneService telefones;
 
-    public UsuarioService(PasswordEncoder passwordEncoder, UsuarioRepository usuarioRepository, UsuarioMapper usuarioMapper, AcessoService acesso) {
+    public UsuarioService(PasswordEncoder passwordEncoder, UsuarioRepository usuarioRepository, UsuarioMapper usuarioMapper, AcessoService acesso, TelefoneService telefones) {
         this.passwordEncoder = passwordEncoder;
         this.usuarioRepository = usuarioRepository;
         this.usuarioMapper = usuarioMapper;
         this.acesso = acesso;
+        this.telefones = telefones;
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public UsuarioResponse cadastrarUsuario(com.libteca.dto.usuario.CadastroUsuarioRequest request) {
+        var salvo=adicionarUsuario(new UsuarioRequest(request.nome(),request.email(),request.senha()));
+        telefones.adicionarTelefone(new com.libteca.dto.telefone.TelefoneRequest(salvo.id(),request.telefone()));
+        return salvo;
     }
 
     // Todos

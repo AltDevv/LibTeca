@@ -30,8 +30,8 @@ public class AuthController {
                 funcionarios.findByUsuarioId(usuario.getId()).map(f -> f.getId()).orElse(0L));
     }
     @PostMapping("/cadastro")
-    public UsuarioResponse cadastrar(@Valid @RequestBody UsuarioRequest request) {
+    public UsuarioResponse cadastrar(@Valid @RequestBody CadastroUsuarioRequest request) {
         biblioteca.exigirConfigurada();
-        return usuarios.adicionarUsuario(request);
+        return usuarios.cadastrarUsuario(request);
     }
 }

@@ -32,8 +32,8 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public UsuarioResponse adicionarUsuario(@Valid @RequestBody UsuarioRequest request) {
-        return usuarioService.adicionarUsuario(request);
+    public UsuarioResponse adicionarUsuario(@Valid @RequestBody com.libteca.dto.usuario.CadastroUsuarioRequest request) {
+        return usuarioService.cadastrarUsuario(request);
     }
 
     @DeleteMapping("/{id}")
