@@ -44,7 +44,7 @@ class CadastroProxyTests {
                 .findFirst().orElseThrow().split(";",2)[0];
     }
     String cadastro(String email) {
-        return "{\"nome\":\"Leitor teste\",\"email\":\""+email+"\",\"senha\":\"SenhaTeste!123\"}";
+        return "{\"telefone\":\""+String.format("119%08d",Integer.toUnsignedLong(email.hashCode())%100000000)+"\",\"nome\":\"Leitor teste\",\"email\":\""+email+"\",\"senha\":\"SenhaTeste!123\"}";
     }
 
     @Test void cadastroELoginPorProxyHttpsMantemCsrfECors() throws Exception {

@@ -63,7 +63,7 @@ class InstalacaoTests {
         mvc.perform(post("/api/instalacao").contentType("application/json").content(json(codigo))).andExpect(status().isForbidden());
         mvc.perform(post("/api/instalacao").with(csrf()).contentType("application/json").content(json("incorreto"))).andExpect(status().isForbidden());
         assertEquals(0,usuarios.count());assertFalse(biblioteca.informacoes().configurada());
-        mvc.perform(post("/api/auth/cadastro").with(csrf()).contentType("application/json").content("{\"nome\":\"Leitor\",\"email\":\"leitor@teste.local\",\"senha\":\"SenhaTeste123!\"}")).andExpect(status().isConflict());
+        mvc.perform(post("/api/auth/cadastro").with(csrf()).contentType("application/json").content("{\"telefone\":\"11900000001\",\"nome\":\"Leitor\",\"email\":\"leitor@teste.local\",\"senha\":\"SenhaTeste123!\"}")).andExpect(status().isConflict());
     }
     @Test void duasInstalacoesConcorrentesCriamUmAdministrador() throws Exception {
         var executor=Executors.newFixedThreadPool(2);

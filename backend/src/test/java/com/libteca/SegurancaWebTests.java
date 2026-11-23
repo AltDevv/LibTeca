@@ -40,6 +40,8 @@ class SegurancaWebTests {
     @Autowired ExemplarRepository exemplares;
     @Autowired EmprestimoRepository emprestimos;
     @Autowired PasswordEncoder encoder;
+    @Autowired TelefoneRepository telefones;
+    @Autowired BibliotecaRepository configuracao;
     MockMvc mvc;
     Usuario leitor,admin,outro;
     Funcionario funcionario;
@@ -50,6 +52,26 @@ class SegurancaWebTests {
     }
     Usuario usuario(Role role){
         Usuario u=new Usuario();u.setNome("Teste");u.setEmail(UUID.randomUUID()+"@teste.local");u.setSenha(encoder.encode("SenhaTeste!123"));u.setRole(role);return usuarios.save(u);
+    }
+
+    @Test void cadastroExigeTelefoneParaLeitorEquipeEAdministradorESalvaSemOrfaos() throws Exception {
+        var b=configuracao.findById(1L).orElseThrow();b.setConfigurada(1);configuracao.save(b);
+        var atendente=usuario(Role.FUNCIONARIO);
+        var f=new Funcionario();f.setUsuario(atendente);f.setAtivo(true);f.setDataAdmissao(LocalDate.now());funcionarios.save(f);
+        for(int i=0;i<3;i++) {
+            String rota=i==0?"/api/auth/cadastro":"/api/usuarios";
+            String email=UUID.randomUUID()+"@teste.local",numero="1190000010"+i;
+            String base="{\"nome\":\"Cadastro telefone\",\"email\":\""+email+"\",\"senha\":\"SenhaTeste123!\"";
+            var identidade=user(i==1?atendente.getEmail():admin.getEmail());
+            mvc.perform(post(rota).with(identidade).with(csrf()).contentType("application/json").content(base+"}")).andExpect(status().isBadRequest());
+            mvc.perform(post(rota).with(identidade).with(csrf()).contentType("application/json").content(base+",\"telefone\":\"123\"}")).andExpect(status().isBadRequest());
+            mvc.perform(post(rota).with(identidade).with(csrf()).contentType("application/json").content(base+",\"telefone\":\""+numero+"\"}")).andExpect(status().isOk());
+            var salvo=usuarios.findByEmail(email).orElseThrow();
+            org.junit.jupiter.api.Assertions.assertEquals(numero,telefones.findByUsuarioId(salvo.getId()).get(0).getNumero());
+            String repetido=UUID.randomUUID()+"@teste.local";
+            mvc.perform(post(rota).with(identidade).with(csrf()).contentType("application/json").content(base.replace(email,repetido)+",\"telefone\":\""+numero+"\"}")).andExpect(status().isConflict());
+            org.junit.jupiter.api.Assertions.assertFalse(usuarios.existsByEmail(repetido));
+        }
     }
 
     Exemplar fisico(){
